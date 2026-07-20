@@ -6,7 +6,7 @@ import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 
 type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[] };
-type LoungePost = { id: number; author: string; body: string; topic: string; time: string; likes: number };
+type LoungePost = { id: string | number; author: string; body: string; topic: string; time: string; likes: number };
 type Snapshot = { id: number; label: string; body: string; chapter: number; date: string; words: number };
 type ActiveView = "Creator’s Home" | "Projects" | "Bulk Import" | "Knowledge Vault" | "Book Architect" | "Writing Studio" | "Creative Timeline" | "Creation Journal" | "Version History" | "Reader" | "Audiobook Studio" | "AI Studio" | "WM ID" | "Lounge" | "Shop" | "Radio";
 
@@ -16,10 +16,7 @@ const initialNotes: Note[] = [
   { id: 3, title: "Scriptures on spiritual awakening", body: "Research and references for the chapter on listening, renewal, and the hidden life.", kind: "Research", date: "Aug 22, 2023", tags: ["Faith", "Reference"] },
   { id: 4, title: "Letter to my younger self", body: "You did not miss your moment. You were becoming ready to receive it.", kind: "Journal", date: "Jan 09, 2024", tags: ["Healing", "Identity"] },
 ];
-const initialPosts: LoungePost[] = [
-  { id: 1, author: "Dreamboard", body: "The Spiritual Awakening manuscript is open for its next chapter.", topic: "Creator update", time: "Today", likes: 18 },
-  { id: 2, author: "The Circle", body: "What is one idea you are finally ready to give a real home?", topic: "Creative conversation", time: "Yesterday", likes: 43 },
-];
+const initialPosts: LoungePost[] = [];
 const chapters = ["The Quiet Before", "When the Old Life Ended", "Learning to Listen", "Surrender Is a Door", "The Work of Becoming"];
 const starterDraft = "There was a particular kind of silence that followed the surrender. Not empty — not at all. It was full of everything I had been too busy to hear.\n\nFor the first time, I understood that awakening wasn’t about becoming someone new. It was about remembering who I had always been beneath the noise.";
 const nav: Array<[string, ActiveView]> = [["⌂", "Creator’s Home"], ["◇", "WM ID"], ["▦", "Projects"], ["⇧", "Bulk Import"], ["⌕", "Knowledge Vault"], ["✦", "Book Architect"], ["✎", "Writing Studio"], ["◫", "Version History"], ["▤", "Reader"], ["◉", "Audiobook Studio"], ["◷", "Creative Timeline"], ["◫", "Creation Journal"], ["✦", "AI Studio"], ["◉", "Lounge"], ["▣", "Shop"], ["◌", "Radio"]];
@@ -28,6 +25,14 @@ const shopItems = [
   { id: "journal", name: "The Dreamboard Journal", kind: "Creator tool", price: 18, note: "A guided companion for the work in progress." },
   { id: "print", name: "Above the Hill Print", kind: "Limited art", price: 42, note: "Artwork release preparation." },
 ];
+
+type CommunityStatus = "local" | "connecting" | "ready" | "needs-setup";
+type CommunityPostRow = { id: string; body: string; topic: string; created_at: string; profiles: { display_name: string | null; wm_handle: string | null } | null };
+
+function toLoungePost(row: CommunityPostRow): LoungePost {
+  const author = row.profiles?.display_name || (row.profiles?.wm_handle ? `@${row.profiles.wm_handle}` : "WM member");
+  return { id: row.id, author, body: row.body, topic: row.topic, time: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(row.created_at)), likes: 0 };
+}
 
 function readLocal<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -48,7 +53,9 @@ export default function Dreamboard() {
   const [loungeText, setLoungeText] = useState("");
   const [posts, setPosts] = useState(initialPosts);
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [shopProducts, setShopProducts] = useState(shopItems);
   const [radioStream, setRadioStream] = useState("");
+  const [communityStatus, setCommunityStatus] = useState<CommunityStatus>(() => getSupabaseBrowserClient() ? "connecting" : "local");
   const [isPlaying, setIsPlaying] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("Help me find the strongest throughline in this chapter without rewriting my voice.");
   const [aiResult, setAiResult] = useState("");
@@ -99,11 +106,29 @@ export default function Dreamboard() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { void loadIdentity(session?.user ?? null); });
     return () => subscription.unsubscribe();
   }, []);
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+    const loadCommunity = async () => {
+      setCommunityStatus("connecting");
+      const [loungeResult, stationResult, productResult] = await Promise.all([
+        supabase.from("lounge_posts").select("id, body, topic, created_at, profiles(display_name, wm_handle)").order("created_at", { ascending: false }).limit(50),
+        supabase.from("radio_stations").select("stream_url").eq("slug", "wm-radio").maybeSingle(),
+        supabase.from("shop_products").select("sku, name, kind, price_cents, note").eq("is_active", true).order("sort_order"),
+      ]);
+      if (loungeResult.error || stationResult.error || productResult.error) { setCommunityStatus("needs-setup"); return; }
+      setPosts((loungeResult.data || []).map(row => toLoungePost(row as CommunityPostRow)));
+      if (stationResult.data?.stream_url) setRadioStream(stationResult.data.stream_url);
+      if (productResult.data?.length) setShopProducts(productResult.data.map(product => ({ id: product.sku, name: product.name, kind: product.kind, price: product.price_cents / 100, note: product.note })));
+      setCommunityStatus("ready");
+    };
+    void loadCommunity();
+  }, []);
 
   const filtered = useMemo(() => notes.filter(note => `${note.title} ${note.body} ${note.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [notes, query]);
   const wordCount = draft.trim() ? draft.trim().split(/\s+/).length : 0;
   const cartCount = Object.values(cart).reduce((total, quantity) => total + quantity, 0);
-  const cartTotal = shopItems.reduce((total, item) => total + item.price * (cart[item.id] || 0), 0);
+  const cartTotal = shopProducts.reduce((total, item) => total + item.price * (cart[item.id] || 0), 0);
   const addNote = (body: string, kind = "Imported") => {
     const clean = body.trim(); if (!clean) return;
     const title = clean.split(/\n|\.|!/)[0].slice(0, 58) || "Untitled source";
@@ -117,7 +142,7 @@ export default function Dreamboard() {
   const handleNarrationFile = (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setNarrationName(file.name); setNarrationUrl(URL.createObjectURL(file)); setNotice(`${file.name} is loaded into the Audiobook Studio for this browser session.`); };
   const saveJournal = () => { if (!journal.trim()) return; addNote(journal, "Journal"); setJournal(""); setNotice("Your journal entry was added to the vault as source material."); };
   const organize = () => { setOrganized(true); setNotes(prev => prev.map(note => note.tags.includes("Unsorted") ? { ...note, tags: ["Emerging thread"] } : note)); setNotice("Themes are ready to review. You remain in control of every assignment."); };
-  const postToLounge = () => { const body = loungeText.trim(); if (!body) return; setPosts(prev => [{ id: Date.now(), author: "Above the Hill", body, topic: "From Dreamboard", time: "Just now", likes: 0 }, ...prev]); setLoungeText(""); setNotice("Your update is now in the Lounge on this device. Community accounts are the next connection."); };
+  const postToLounge = async () => { const body = loungeText.trim(); if (!body) return; const supabase = getSupabaseBrowserClient(); if (!supabase || !wmUser) { setNotice("Set up your WM ID before publishing to the shared Lounge."); setActive("WM ID"); return; } const { data, error } = await supabase.from("lounge_posts").insert({ author_id: wmUser.id, body, topic: "From Dreamboard" }).select("id, body, topic, created_at, profiles(display_name, wm_handle)").single(); if (error || !data) { setNotice("The Lounge database needs its Supabase setup script completed before this can publish."); return; } setPosts(prev => [toLoungePost(data as CommunityPostRow), ...prev]); setLoungeText(""); setNotice("Your update is now shared in the Lounge."); };
   const addToCart = (itemId: string) => { setCart(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 })); setNotice("Added to the Shop cart. Payments will be connected only when you choose your checkout provider."); };
   const toggleRadio = async () => {
     if (!radioStream.trim()) { setNotice("Paste a licensed stream URL first. Dreamboard will never invent a radio signal."); return; }
@@ -125,6 +150,7 @@ export default function Dreamboard() {
     if (isPlaying) { audio.current.pause(); setIsPlaying(false); return; }
     try { await audio.current.play(); setIsPlaying(true); setNotice("WM Radio is playing your connected stream."); } catch { setNotice("That stream could not play in this browser. Check the URL and stream permissions."); }
   };
+  const publishRadio = async () => { const stream = radioStream.trim(); const supabase = getSupabaseBrowserClient(); if (!stream) { setNotice("Paste your licensed stream URL first."); return; } if (!supabase || !wmUser) { setNotice("Set up your WM ID before publishing a shared station."); setActive("WM ID"); return; } const { error } = await supabase.from("radio_stations").upsert({ slug: "wm-radio", name: "WM Radio", owner_id: wmUser.id, stream_url: stream, is_live: true }, { onConflict: "slug" }); if (error) { setNotice("The Radio database needs its Supabase setup script completed, or this station belongs to another WM owner."); return; } setNotice("WM Radio is now published for Dreamboard visitors."); };
   const askAI = async () => {
     if (!aiPrompt.trim()) return;
     setAiStatus("working"); setAiResult("");
@@ -180,9 +206,9 @@ export default function Dreamboard() {
       {active === "Audiobook Studio" && <AudiobookStudio fileName={narrationName} source={narrationUrl} inputRef={narrationInput} onFile={handleNarrationFile} />}
       {active === "WM ID" && <WmId user={wmUser} email={wmEmail} setEmail={setWmEmail} handle={wmHandle} setHandle={setWmHandle} status={wmStatus} message={wmMessage} onSend={sendWmMagicLink} onSave={saveWmProfile} onSignOut={signOutWm} />}
       {active === "AI Studio" && <AIStudio prompt={aiPrompt} setPrompt={setAiPrompt} status={aiStatus} result={aiResult} onAsk={askAI} />}
-      {active === "Lounge" && <Lounge posts={posts} text={loungeText} setText={setLoungeText} onPost={postToLounge} />}
-      {active === "Shop" && <Shop total={cartTotal} count={cartCount} onAdd={addToCart} />}
-      {active === "Radio" && <Radio stream={radioStream} setStream={setRadioStream} playing={isPlaying} onToggle={toggleRadio} audioRef={audio} />}
+      {active === "Lounge" && <Lounge posts={posts} text={loungeText} setText={setLoungeText} onPost={postToLounge} status={communityStatus} />}
+      {active === "Shop" && <Shop total={cartTotal} count={cartCount} onAdd={addToCart} items={shopProducts} status={communityStatus} />}
+      {active === "Radio" && <Radio stream={radioStream} setStream={setRadioStream} playing={isPlaying} onToggle={toggleRadio} onPublish={publishRadio} audioRef={audio} status={communityStatus} />}
     </section>
   </main>;
 }
@@ -201,8 +227,8 @@ function WmId({ user, email, setEmail, handle, setHandle, status, message, onSen
 
 function AIStudio({ prompt, setPrompt, status, result, onAsk }: { prompt: string; setPrompt: (value: string) => void; status: string; result: string; onAsk: () => void }) { return <section className="view ai-studio"><div className="view-heading"><span className="eyebrow">OPEN-MODEL AI FOUNDATION</span><h2>Creative intelligence, under your direction.</h2><p>Dreamboard’s AI connection is real infrastructure: it only runs when you connect your chosen hosted, open-model provider in the app’s environment settings. It never silently changes your manuscript.</p></div><div className="ai-grid"><section className="ai-card"><div className="card-head"><div><span className="eyebrow">ASK FOR A REVIEW</span><h3>Keep your voice in charge.</h3></div><span className={status === "ready" ? "ai-pill connected" : "ai-pill"}>{status === "ready" ? "MODEL CONNECTED" : "CONNECTOR READY"}</span></div><textarea value={prompt} onChange={event => setPrompt(event.target.value)} aria-label="AI request" /><button className="gold" onClick={onAsk} disabled={status === "working"}>{status === "working" ? "Thinking…" : "Ask for a suggestion"} <b>→</b></button><p className="assist-note">Suggestions appear below for review. Nothing is applied to your draft automatically.</p></section><section className="ai-card ai-result"><span className="eyebrow">REVIEW PANEL</span><h3>{status === "needs-connection" ? "One connection left" : status === "ready" ? "A suggestion to review" : "Your next collaborator"}</h3><p>{result || "Connect your open-model provider once, then use this space for outlining, source discovery, chapter questions, and gentle editorial feedback."}</p>{status === "needs-connection" && <div className="connection-note"><b>What is already built:</b><span>The secure server connector, a review-first workflow, and a provider-neutral format. Add AI_BASE_URL, AI_API_KEY, and AI_MODEL to Vercel when you choose your provider.</span></div>}</section></div><section className="roadmap-strip"><span className="eyebrow">BUILT NEXT, WITHOUT BLOCKING YOUR BOOK</span><div><b>Creator profiles</b><b>Cloud vault</b><b>Reader</b><b>Audiobook studio</b><b>Comic studio</b></div></section></section>; }
 
-function Lounge({ posts, text, setText, onPost }: { posts: LoungePost[]; text: string; setText: (value: string) => void; onPost: () => void }) { return <section className="view ecosystem-view"><div className="view-heading"><span className="eyebrow">WEALTHY MINDSETS LOUNGE</span><h2>Let the work find its people.</h2><p>The Lounge begins inside Dreamboard: share a creator update, keep the work connected to its community, and make every public moment intentional.</p></div><div className="lounge-layout"><section className="lounge-composer"><div className="card-head"><div><span className="eyebrow">FROM YOUR CREATIVE DESK</span><h3>Post to the Lounge</h3></div><span className="live-dot">LOCAL FIRST</span></div><textarea value={text} onChange={event => setText(event.target.value)} placeholder="Share a thought, a milestone, or an invitation…" /><div><button className="ghost">Add source</button><button className="gold" onClick={onPost} disabled={!text.trim()}>Share update <b>→</b></button></div><p>Posts are saved in this Dreamboard session now. WM ID community publishing is the next secure connection.</p></section><section className="lounge-feed">{posts.map(post => <article key={post.id}><div className="post-avatar">WM</div><div><header><span><b>{post.author}</b><small>{post.topic} · {post.time}</small></span><button aria-label="More post options">•••</button></header><p>{post.body}</p><footer><button>♡ {post.likes}</button><button>⌁ Reply</button><button>↗ Share</button></footer></div></article>)}</section></div></section>; }
+function Lounge({ posts, text, setText, onPost, status }: { posts: LoungePost[]; text: string; setText: (value: string) => void; onPost: () => Promise<void>; status: CommunityStatus }) { const shared = status === "ready"; return <section className="view ecosystem-view"><div className="view-heading"><span className="eyebrow">WEALTHY MINDSETS LOUNGE</span><h2>Let the work find its people.</h2><p>The Lounge begins inside Dreamboard: share a creator update, keep the work connected to its community, and make every public moment intentional.</p></div><div className="lounge-layout"><section className="lounge-composer"><div className="card-head"><div><span className="eyebrow">FROM YOUR CREATIVE DESK</span><h3>Post to the Lounge</h3></div><span className="live-dot">{shared ? "SHARED" : "SETUP REQUIRED"}</span></div><textarea value={text} onChange={event => setText(event.target.value)} placeholder="Share a thought, a milestone, or an invitation…" /><div><button className="ghost">Add source</button><button className="gold" onClick={() => void onPost()} disabled={!text.trim()}>Share update <b>→</b></button></div><p>{shared ? "Posts are stored in the shared Lounge. A WM ID is required before publishing." : "Connect Supabase and run the Dreamboard community script to publish shared Lounge posts."}</p></section><section className="lounge-feed">{posts.length ? posts.map(post => <article key={post.id}><div className="post-avatar">WM</div><div><header><span><b>{post.author}</b><small>{post.topic} · {post.time}</small></span><button aria-label="More post options">•••</button></header><p>{post.body}</p><footer><button>♡ {post.likes}</button><button>⌁ Reply</button><button>↗ Share</button></footer></div></article>) : <div className="empty-workspace"><span>◉</span><h3>The Lounge is waiting for its first shared post.</h3><p>Set up WM ID, then publish the thought that starts the room.</p></div>}</section></div></section>; }
 
-function Shop({ total, count, onAdd }: { total: number; count: number; onAdd: (itemId: string) => void }) { return <section className="view ecosystem-view"><div className="view-heading split"><div><span className="eyebrow">WEALTHY MINDSETS SHOP</span><h2>Build the shelf around your work.</h2><p>Products live beside their source project so books, art, journals, and future releases can move into the Shop intentionally.</p></div><div className="cart-summary"><span>YOUR CART</span><b>{count} item{count === 1 ? "" : "s"}</b><small>${total.toFixed(2)}</small></div></div><div className="shop-grid">{shopItems.map((item, index) => <article className={`shop-item tone-${index + 1}`} key={item.id}><div className="shop-art"><span>{index === 0 ? "SPIRITUAL\nAWAKENING" : index === 1 ? "DREAM\nBOARD" : "ABOVE\nTHE HILL"}</span></div><div><span>{item.kind}</span><h3>{item.name}</h3><p>{item.note}</p><footer><b>${item.price.toFixed(2)}</b><button className="cart-button" onClick={() => onAdd(item.id)}>Add to cart +</button></footer></div></article>)}</div><div className="shop-connection"><span>PAYMENTS ARE NOT PRETENDING TO BE LIVE</span><p>Your catalog and cart are working. The secure checkout connection comes next, after you decide which payment provider and account Dreamboard should use.</p></div></section>; }
+function Shop({ total, count, onAdd, items, status }: { total: number; count: number; onAdd: (itemId: string) => void; items: typeof shopItems; status: CommunityStatus }) { return <section className="view ecosystem-view"><div className="view-heading split"><div><span className="eyebrow">WEALTHY MINDSETS SHOP</span><h2>Build the shelf around your work.</h2><p>Products live beside their source project so books, art, journals, and future releases can move into the Shop intentionally.</p></div><div className="cart-summary"><span>YOUR CART</span><b>{count} item{count === 1 ? "" : "s"}</b><small>${total.toFixed(2)}</small></div></div><div className="shop-grid">{items.map((item, index) => <article className={`shop-item tone-${index + 1}`} key={item.id}><div className="shop-art"><span>{index === 0 ? "SPIRITUAL\nAWAKENING" : index === 1 ? "DREAM\nBOARD" : "ABOVE\nTHE HILL"}</span></div><div><span>{item.kind}</span><h3>{item.name}</h3><p>{item.note}</p><footer><b>${item.price.toFixed(2)}</b><button className="cart-button" onClick={() => onAdd(item.id)}>Add to cart +</button></footer></div></article>)}</div><div className="shop-connection"><span>{status === "ready" ? "SHARED CATALOG · CHECKOUT NEXT" : "PAYMENTS ARE NOT PRETENDING TO BE LIVE"}</span><p>{status === "ready" ? "The catalog now comes from Dreamboard’s shared database. The cart works on this device; secure checkout needs the payment account you choose." : "Your catalog and cart are working. The secure checkout connection comes next, after you decide which payment provider and account Dreamboard should use."}</p></div></section>; }
 
-function Radio({ stream, setStream, playing, onToggle, audioRef }: { stream: string; setStream: (value: string) => void; playing: boolean; onToggle: () => void; audioRef: RefObject<HTMLAudioElement | null> }) { return <section className="view ecosystem-view radio-view"><div className="view-heading"><span className="eyebrow">WEALTHY MINDSETS RADIO</span><h2>A home for the sound behind the work.</h2><p>Connect a licensed live stream and use Dreamboard as the first real WM Radio control room.</p></div><div className="radio-console"><div className="radio-record"><i /></div><div className="radio-main"><div className="live-label">{playing ? "● LIVE NOW" : "○ STATION READY"}</div><h3>WM Radio</h3><p>{stream ? "Your connected station is ready to play." : "No stream connected yet — add your station URL below."}</p><div className="wave"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div><button className="radio-play" onClick={onToggle} aria-label={playing ? "Pause WM Radio" : "Play WM Radio"}>{playing ? "Ⅱ" : "▶"}</button><audio ref={audioRef} src={stream || undefined} /></div><div className="radio-connect"><span className="eyebrow">STATION CONNECTION</span><label>LICENSED STREAM URL<input value={stream} onChange={event => setStream(event.target.value)} placeholder="https://your-radio-stream…" /></label><p>This is a real audio player. Use only a stream you own or are licensed to broadcast.</p><button className="ghost" onClick={() => setStream("")}>Clear station</button></div></div></section>; }
+function Radio({ stream, setStream, playing, onToggle, onPublish, audioRef, status }: { stream: string; setStream: (value: string) => void; playing: boolean; onToggle: () => void; onPublish: () => Promise<void>; audioRef: RefObject<HTMLAudioElement | null>; status: CommunityStatus }) { return <section className="view ecosystem-view radio-view"><div className="view-heading"><span className="eyebrow">WEALTHY MINDSETS RADIO</span><h2>A home for the sound behind the work.</h2><p>Connect a licensed live stream and use Dreamboard as the first real WM Radio control room.</p></div><div className="radio-console"><div className="radio-record"><i /></div><div className="radio-main"><div className="live-label">{playing ? "● LIVE NOW" : status === "ready" ? "○ SHARED STATION READY" : "○ STATION SETUP"}</div><h3>WM Radio</h3><p>{stream ? "Your connected station is ready to play." : "No stream connected yet — add your station URL below."}</p><div className="wave"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div><button className="radio-play" onClick={onToggle} aria-label={playing ? "Pause WM Radio" : "Play WM Radio"}>{playing ? "Ⅱ" : "▶"}</button><audio ref={audioRef} src={stream || undefined} /></div><div className="radio-connect"><span className="eyebrow">STATION CONNECTION</span><label>LICENSED STREAM URL<input value={stream} onChange={event => setStream(event.target.value)} placeholder="https://your-radio-stream…" /></label><p>This is a real audio player. Use only a stream you own or are licensed to broadcast.</p><button className="gold" onClick={() => void onPublish()}>Publish WM Radio <b>→</b></button><button className="ghost" onClick={() => setStream("")}>Clear station</button></div></div></section>; }
