@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, RefObject } from "react";
+import type { User } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 
 type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[] };
 type LoungePost = { id: number; author: string; body: string; topic: string; time: string; likes: number };
-type ActiveView = "Creator’s Home" | "Projects" | "Bulk Import" | "Knowledge Vault" | "Book Architect" | "Writing Studio" | "Creative Timeline" | "Creation Journal" | "AI Studio" | "Lounge" | "Shop" | "Radio";
+type ActiveView = "Creator’s Home" | "Projects" | "Bulk Import" | "Knowledge Vault" | "Book Architect" | "Writing Studio" | "Creative Timeline" | "Creation Journal" | "AI Studio" | "WM ID" | "Lounge" | "Shop" | "Radio";
 
 const initialNotes: Note[] = [
   { id: 1, title: "The night everything changed", body: "A testimony about the moment silence became an invitation instead of an absence.", kind: "Testimony", date: "May 14, 2022", tags: ["Surrender", "Awakening"] },
@@ -19,7 +21,7 @@ const initialPosts: LoungePost[] = [
 ];
 const chapters = ["The Quiet Before", "When the Old Life Ended", "Learning to Listen", "Surrender Is a Door", "The Work of Becoming"];
 const starterDraft = "There was a particular kind of silence that followed the surrender. Not empty — not at all. It was full of everything I had been too busy to hear.\n\nFor the first time, I understood that awakening wasn’t about becoming someone new. It was about remembering who I had always been beneath the noise.";
-const nav: Array<[string, ActiveView]> = [["⌂", "Creator’s Home"], ["▦", "Projects"], ["⇧", "Bulk Import"], ["⌕", "Knowledge Vault"], ["✦", "Book Architect"], ["✎", "Writing Studio"], ["◷", "Creative Timeline"], ["◫", "Creation Journal"], ["✦", "AI Studio"], ["◉", "Lounge"], ["▣", "Shop"], ["◌", "Radio"]];
+const nav: Array<[string, ActiveView]> = [["⌂", "Creator’s Home"], ["◇", "WM ID"], ["▦", "Projects"], ["⇧", "Bulk Import"], ["⌕", "Knowledge Vault"], ["✦", "Book Architect"], ["✎", "Writing Studio"], ["◷", "Creative Timeline"], ["◫", "Creation Journal"], ["✦", "AI Studio"], ["◉", "Lounge"], ["▣", "Shop"], ["◌", "Radio"]];
 const shopItems = [
   { id: "book", name: "Spiritual Awakening", kind: "Book in progress", price: 24, note: "Connect publishing when the manuscript is ready." },
   { id: "journal", name: "The Dreamboard Journal", kind: "Creator tool", price: 18, note: "A guided companion for the work in progress." },
@@ -50,6 +52,11 @@ export default function Dreamboard() {
   const [aiPrompt, setAiPrompt] = useState("Help me find the strongest throughline in this chapter without rewriting my voice.");
   const [aiResult, setAiResult] = useState("");
   const [aiStatus, setAiStatus] = useState<"idle" | "working" | "ready" | "needs-connection">("idle");
+  const [wmUser, setWmUser] = useState<User | null>(null);
+  const [wmEmail, setWmEmail] = useState("");
+  const [wmHandle, setWmHandle] = useState("");
+  const [wmStatus, setWmStatus] = useState<"ready" | "sending" | "sent" | "saving" | "saved" | "needs-connection" | "error">("ready");
+  const [wmMessage, setWmMessage] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const audio = useRef<HTMLAudioElement>(null);
 
@@ -66,6 +73,20 @@ export default function Dreamboard() {
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-lounge", JSON.stringify(posts)); }, [posts, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-cart", JSON.stringify(cart)); }, [cart, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-radio-stream", JSON.stringify(radioStream)); }, [radioStream, hydrated]);
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) { setWmStatus("needs-connection"); return; }
+    const loadIdentity = async (user: User | null) => {
+      setWmUser(user);
+      if (!user) return;
+      const { data } = await supabase.from("profiles").select("wm_handle, display_name").eq("id", user.id).maybeSingle();
+      if (data?.wm_handle) setWmHandle(data.wm_handle);
+      setWmStatus("ready");
+    };
+    void supabase.auth.getUser().then(({ data }) => loadIdentity(data.user));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { void loadIdentity(session?.user ?? null); });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const filtered = useMemo(() => notes.filter(note => `${note.title} ${note.body} ${note.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [notes, query]);
   const wordCount = draft.trim() ? draft.trim().split(/\s+/).length : 0;
@@ -99,6 +120,26 @@ export default function Dreamboard() {
       setAiResult(data.text || "The connected model returned no text."); setAiStatus("ready");
     } catch { setAiStatus("needs-connection"); setAiResult("Dreamboard could not reach the AI connector. Check its hosted settings and try again."); }
   };
+  const sendWmMagicLink = async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) { setWmStatus("needs-connection"); setWmMessage("WM ID needs its Supabase connection values added in Vercel first."); return; }
+    if (!wmEmail.trim()) { setWmStatus("error"); setWmMessage("Enter your email address first."); return; }
+    setWmStatus("sending");
+    const { error } = await supabase.auth.signInWithOtp({ email: wmEmail.trim(), options: { emailRedirectTo: window.location.origin } });
+    if (error) { setWmStatus("error"); setWmMessage(error.message); return; }
+    setWmStatus("sent"); setWmMessage("Check your email for the WM ID sign-in link, then return here.");
+  };
+  const saveWmProfile = async () => {
+    const supabase = getSupabaseBrowserClient();
+    const handle = wmHandle.trim().toLowerCase();
+    if (!supabase || !wmUser) return;
+    if (!/^[a-z0-9][a-z0-9_-]{2,29}$/.test(handle)) { setWmStatus("error"); setWmMessage("Choose 3–30 lowercase letters, numbers, _ or - for your WM ID."); return; }
+    setWmStatus("saving");
+    const { error } = await supabase.from("profiles").upsert({ id: wmUser.id, wm_handle: handle, display_name: handle });
+    if (error) { setWmStatus("error"); setWmMessage("Your account is signed in, but the WM profile table needs the setup script run in Supabase."); return; }
+    setWmStatus("saved"); setWmMessage(`WM ID @${handle} is ready across the Wealthy Mindsets ecosystem.`);
+  };
+  const signOutWm = async () => { const supabase = getSupabaseBrowserClient(); if (!supabase) return; await supabase.auth.signOut(); setWmUser(null); setWmHandle(""); setWmStatus("ready"); setWmMessage("Signed out of WM ID on this device."); };
 
   return <main className="os-shell">
     <aside className="rail">
@@ -109,7 +150,7 @@ export default function Dreamboard() {
       <div className="founder"><span>AH</span><div><b>Above the Hill</b><small>Founder workspace</small></div></div>
     </aside>
     <section className="stage">
-      <header><div><span className="eyebrow">DREAMBOARD · CREATIVE OPERATING SYSTEM</span><h1>{active}</h1></div><div className="header-actions"><span className="presence"><i /> {hydrated ? "Saved on this device" : "Opening workspace"}</span><button className="ghost" onClick={() => setActive("Bulk Import")}>Import material</button><button className="gold" onClick={() => setActive("Writing Studio")}>Continue creating <b>→</b></button></div></header>
+      <header><div><span className="eyebrow">DREAMBOARD · CREATIVE OPERATING SYSTEM</span><h1>{active}</h1></div><div className="header-actions"><button className="wm-account" onClick={() => setActive("WM ID")}>{wmUser ? `@${wmHandle || wmUser.email?.split("@")[0] || "member"}` : "Set up WM ID"}</button><span className="presence"><i /> {hydrated ? "Saved on this device" : "Opening workspace"}</span><button className="ghost" onClick={() => setActive("Bulk Import")}>Import material</button><button className="gold" onClick={() => setActive("Writing Studio")}>Continue creating <b>→</b></button></div></header>
       <div className="notice" role="status"><span>✦</span>{notice}</div>
       {active === "Creator’s Home" && <Home notes={notes} draft={draft} wordCount={wordCount} organized={organized} onGo={setActive} onOrganize={organize} />}
       {active === "Bulk Import" && <section className="view import-view"><div className="view-heading"><span className="eyebrow">PRESERVE THE ORIGINAL</span><h2>Bring in the pieces you’ve been carrying.</h2><p>Paste a note or import a plain-text or Markdown file. It enters your Knowledge Vault untouched, ready for your review.</p></div><div className="import-grid"><div className="input-card"><label>PASTE SOURCE MATERIAL<textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="A prayer, voice-note transcript, scene, research excerpt, or unfinished thought..." /></label><button className="gold wide" onClick={importNotes} disabled={!importText.trim()}>Add to Knowledge Vault <b>→</b></button></div><div className="drop-card"><span>⇧</span><h3>Import a file</h3><p>Plain text and Markdown are ready in this first release. Original text is retained alongside the organized view.</p><input ref={fileInput} type="file" accept=".txt,.md,text/plain,text/markdown" onChange={handleFile} hidden /><button className="ghost" onClick={() => fileInput.current?.click()}>Choose a file</button></div></div></section>}
@@ -119,6 +160,7 @@ export default function Dreamboard() {
       {active === "Creation Journal" && <section className="view journal-view"><div className="view-heading"><span className="eyebrow">CREATION JOURNAL</span><h2>Leave a note for your future self.</h2><p>The journal becomes private source material for your work, not a public performance.</p></div><div className="journal-card"><span>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase()}</span><textarea value={journal} onChange={e => setJournal(e.target.value)} placeholder="Today, I want to remember..." /><button className="gold" onClick={saveJournal} disabled={!journal.trim()}>Keep this note <b>→</b></button></div></section>}
       {active === "Projects" && <section className="view"><div className="view-heading"><span className="eyebrow">ACTIVE CREATION</span><h2>Spiritual Awakening</h2><p>Your first proof that Dreamboard works: a real book made from the material only you could have gathered.</p></div><div className="project-focus"><div className="book-cover"><small>SPIRITUAL</small><strong>AWAKENING</strong><em>Above the Hill</em></div><div><span className="eyebrow">BOOK PROJECT · ACTIVE</span><h3>34% manuscript progress</h3><div className="meter"><i /></div><p>{wordCount.toLocaleString()} chapter words · {notes.length} source pieces · {organized ? "themes reviewed" : "themes ready to discover"}</p><button className="gold" onClick={() => setActive("Writing Studio")}>Open Writing Studio <b>→</b></button></div></div></section>}
       {active === "Creative Timeline" && <Timeline notes={notes} />}
+      {active === "WM ID" && <WmId user={wmUser} email={wmEmail} setEmail={setWmEmail} handle={wmHandle} setHandle={setWmHandle} status={wmStatus} message={wmMessage} onSend={sendWmMagicLink} onSave={saveWmProfile} onSignOut={signOutWm} />}
       {active === "AI Studio" && <AIStudio prompt={aiPrompt} setPrompt={setAiPrompt} status={aiStatus} result={aiResult} onAsk={askAI} />}
       {active === "Lounge" && <Lounge posts={posts} text={loungeText} setText={setLoungeText} onPost={postToLounge} />}
       {active === "Shop" && <Shop cart={cart} total={cartTotal} count={cartCount} onAdd={addToCart} />}
@@ -130,6 +172,8 @@ export default function Dreamboard() {
 function Home({ notes, draft, wordCount, organized, onGo, onOrganize }: { notes: Note[]; draft: string; wordCount: number; organized: boolean; onGo: (view: ActiveView) => void; onOrganize: () => void }) { return <section className="home view"><div className="hero"><div className="hero-copy"><span className="eyebrow">THE HOME FOR YOUR WORK</span><h2>Make room for the work<br />only <em>you</em> can make.</h2><p>Turn what you’ve carried into what you’re called to share—without losing the truth of where it began.</p><div><button className="gold" onClick={() => onGo("Writing Studio")}>Continue writing <b>→</b></button><button className="text-button" onClick={() => onGo("Book Architect")}>View manuscript map</button></div></div><div className="hero-art"><div className="orbit" /><div className="record"><i /></div><span>SPIRITUAL<br />AWAKENING</span></div></div><div className="metrics"><div><span>MANUSCRIPT</span><b>34%</b><i><em /></i><small>{wordCount.toLocaleString()} current draft words</small></div><div><span>KNOWLEDGE VAULT</span><b>{notes.length}</b><small>Pieces of living source material</small></div><div><span>CREATOR VOICE</span><b>Yours</b><small>Review-first AI assistance</small></div></div><div className="home-grid"><section className="home-card vault-home"><div className="card-head"><div><span className="eyebrow">KNOWLEDGE VAULT</span><h3>Return to what matters.</h3></div><button onClick={() => onGo("Knowledge Vault")}>Open vault →</button></div>{notes.slice(0, 3).map(note => <button className="note-row" key={note.id} onClick={() => onGo("Knowledge Vault")}><span>✦</span><div><b>{note.title}</b><small>{note.kind} · {note.date}</small></div><em>{note.tags[0]}</em></button>)}</section><section className="home-card intelligence"><span className="spark">✦</span><span className="eyebrow">CREATIVE INTELLIGENCE</span><h3>{organized ? "Your threads are ready." : "There’s meaning in the mess."}</h3><p>{organized ? "Themes are organized as reviewable suggestions. Nothing was changed without you." : `You have ${notes.length} pieces of source material ready to become a coherent manuscript.`}</p><button className="gold pale" onClick={onOrganize}>{organized ? "Review the threads" : "Organize my notes"} <b>→</b></button></section></div><section className="writing-peek"><div><span className="eyebrow">WRITING STUDIO · ACTIVE DRAFT</span><h3>Learning to Listen</h3><p>{draft.slice(0, 220)}…</p><footer><span>{wordCount.toLocaleString()} words in this chapter</span><button onClick={() => onGo("Writing Studio")}>Open the studio →</button></footer></div></section></section>; }
 
 function Timeline({ notes }: { notes: Note[] }) { return <section className="view"><div className="view-heading"><span className="eyebrow">CREATIVE TIMELINE</span><h2>Moments that shaped the manuscript.</h2><p>Your source material, in the order it entered your story.</p></div><div className="timeline">{notes.map((note, index) => <article key={note.id}><i>{String(index + 1).padStart(2, "0")}</i><div><span>{note.date}</span><h3>{note.title}</h3><p>{note.body}</p></div></article>)}</div></section>; }
+
+function WmId({ user, email, setEmail, handle, setHandle, status, message, onSend, onSave, onSignOut }: { user: User | null; email: string; setEmail: (value: string) => void; handle: string; setHandle: (value: string) => void; status: string; message: string; onSend: () => void; onSave: () => void; onSignOut: () => void }) { const missingConnection = status === "needs-connection"; return <section className="view wm-id"><div className="view-heading"><span className="eyebrow">ONE ID · EVERY WM SPACE</span><h2>Your Wealthy Mindsets identity.</h2><p>One secure WM ID will carry your creator profile into Dreamboard, Lounge, Shop, Radio, and the experiences still being built.</p></div><div className="wm-grid"><section className="wm-card wm-orbit-card"><div className="wm-seal">WM</div><span className="eyebrow">WEALTHY MINDSETS ID</span><h3>{user ? `Welcome, ${user.email}` : "Make the work yours."}</h3><p>{user ? "Your account is verified by Supabase. Choose a WM ID below to give it a home across the ecosystem." : "Sign in with a passwordless email link. No separate Dreamboard password to remember."}</p><div className="wm-path"><span>Dreamboard</span><i>→</i><span>Lounge</span><i>→</i><span>Shop</span><i>→</i><span>Radio</span></div></section><section className="wm-card wm-form">{missingConnection ? <><span className="eyebrow">CONNECTION REQUIRED</span><h3>Link the Supabase project.</h3><p>WM ID is built into Dreamboard. Add the project URL and publishable key in Vercel, then it becomes live for every visitor.</p><div className="connection-note"><b>Safe connection values only:</b><span>Use your Project URL and Publishable key. Never use a secret key or service-role key in Dreamboard.</span></div></> : !user ? <><span className="eyebrow">CREATE OR SIGN IN</span><h3>Start with your email.</h3><label>EMAIL ADDRESS<input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" /></label><button className="gold wide" onClick={onSend} disabled={status === "sending"}>{status === "sending" ? "Sending link…" : "Send my WM ID link"} <b>→</b></button><p className="wm-message">{message || "We’ll email a secure sign-in link instead of asking you to make another password."}</p></> : <><span className="eyebrow">CLAIM YOUR WM ID</span><h3>Choose the name people will know.</h3><label>WM ID<input value={handle} onChange={event => setHandle(event.target.value)} placeholder="above_the_hill" autoCapitalize="none" /></label><button className="gold wide" onClick={onSave} disabled={status === "saving"}>{status === "saving" ? "Saving WM ID…" : "Save my WM ID"} <b>→</b></button><p className="wm-message">{message || "Your WM ID is private until you choose to share it in the Lounge or a creator profile."}</p><button className="text-button" onClick={onSignOut}>Sign out on this device</button></>}</section></div></section>; }
 
 function AIStudio({ prompt, setPrompt, status, result, onAsk }: { prompt: string; setPrompt: (value: string) => void; status: string; result: string; onAsk: () => void }) { return <section className="view ai-studio"><div className="view-heading"><span className="eyebrow">OPEN-MODEL AI FOUNDATION</span><h2>Creative intelligence, under your direction.</h2><p>Dreamboard’s AI connection is real infrastructure: it only runs when you connect your chosen hosted, open-model provider in the app’s environment settings. It never silently changes your manuscript.</p></div><div className="ai-grid"><section className="ai-card"><div className="card-head"><div><span className="eyebrow">ASK FOR A REVIEW</span><h3>Keep your voice in charge.</h3></div><span className={status === "ready" ? "ai-pill connected" : "ai-pill"}>{status === "ready" ? "MODEL CONNECTED" : "CONNECTOR READY"}</span></div><textarea value={prompt} onChange={event => setPrompt(event.target.value)} aria-label="AI request" /><button className="gold" onClick={onAsk} disabled={status === "working"}>{status === "working" ? "Thinking…" : "Ask for a suggestion"} <b>→</b></button><p className="assist-note">Suggestions appear below for review. Nothing is applied to your draft automatically.</p></section><section className="ai-card ai-result"><span className="eyebrow">REVIEW PANEL</span><h3>{status === "needs-connection" ? "One connection left" : status === "ready" ? "A suggestion to review" : "Your next collaborator"}</h3><p>{result || "Connect your open-model provider once, then use this space for outlining, source discovery, chapter questions, and gentle editorial feedback."}</p>{status === "needs-connection" && <div className="connection-note"><b>What is already built:</b><span>The secure server connector, a review-first workflow, and a provider-neutral format. Add AI_BASE_URL, AI_API_KEY, and AI_MODEL to Vercel when you choose your provider.</span></div>}</section></div><section className="roadmap-strip"><span className="eyebrow">BUILT NEXT, WITHOUT BLOCKING YOUR BOOK</span><div><b>Creator profiles</b><b>Cloud vault</b><b>Reader</b><b>Audiobook studio</b><b>Comic studio</b></div></section></section>; }
 
