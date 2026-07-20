@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./dreamboard.css";
 import "./wm-id.css";
+import "./studios.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://above-the-hill-developments-built-app-dream-board-o9oel27np.vercel.app"),
