@@ -1,0 +1,84 @@
+.hero-manuscript {
+  background:
+    radial-gradient(circle at 64% 32%, rgba(214, 178, 97, .3), transparent 12%),
+    linear-gradient(135deg, #1b4836, #101912);
+}
+
+.hero-manuscript::before {
+  background: linear-gradient(90deg, rgba(17, 35, 27, .68), rgba(17, 35, 27, .08));
+}
+
+.manuscript-card {
+  position: relative;
+  z-index: 2;
+  width: 250px;
+  min-height: 278px;
+  padding: 28px 25px;
+  background: #f4ead5;
+  color: #25271f;
+  box-shadow: 14px 18px 0 rgba(0, 0, 0, .14), 0 20px 45px rgba(0, 0, 0, .35);
+  transform: rotate(-4deg);
+  display: flex;
+  flex-direction: column;
+}
+
+.manuscript-card > span {
+  font: 9px "DM Mono", monospace;
+  letter-spacing: 1.3px;
+  color: #6b5a36;
+}
+
+.manuscript-card > b {
+  font: 9px "DM Mono", monospace;
+  letter-spacing: 1px;
+  color: #947637;
+  margin-top: 31px;
+}
+
+.manuscript-card > i {
+  font: 600 26px/1.05 "Playfair Display", Georgia, serif;
+  margin: 9px 0 16px;
+}
+
+.manuscript-card > p {
+  font: italic 14px/1.55 Georgia, serif;
+  margin: 0;
+  color: #5a574b;
+}
+
+.manuscript-card footer {
+  margin-top: auto;
+  border-top: 1px solid rgba(69, 65, 52, .24);
+  padding-top: 12px;
+  color: #716947;
+  font: 9px "DM Mono", monospace;
+  letter-spacing: .7px;
+}
+
+.manuscript-card footer em {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4d9f64;
+  margin-right: 6px;
+}
+
+.margin-note {
+  position: absolute;
+  right: 42px;
+  bottom: 50px;
+  z-index: 2;
+  color: #e8c76f;
+  font: 600 15px/1.05 "Playfair Display", Georgia, serif;
+  letter-spacing: 1px;
+  transform: rotate(5deg);
+  opacity: .9;
+}
+
+.hero-manuscript .orbit {
+  width: 310px;
+  height: 310px;
+  right: 38px;
+  top: 22px;
+}
