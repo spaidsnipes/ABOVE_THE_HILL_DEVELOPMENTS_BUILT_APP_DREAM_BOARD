@@ -1,69 +1,65 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 
-const nav = [
-  ["⌂", "Creator's Home"], ["▦", "Projects"], ["⇧", "Import"],
-  ["⌕", "Knowledge Vault"], ["✦", "Book Architect"], ["✎", "Writing Studio"],
-  ["◷", "Timeline"], ["◫", "Creation Journal"],
+type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[] };
+const initialNotes: Note[] = [
+  { id: 1, title: "The night everything changed", body: "A testimony about the moment silence became an invitation instead of an absence.", kind: "Testimony", date: "May 14, 2022", tags: ["Surrender", "Awakening"] },
+  { id: 2, title: "What surrender taught me", body: "Surrender was not losing myself. It was meeting the truest part of myself beneath the noise.", kind: "Reflection", date: "Jun 03, 2022", tags: ["Surrender", "Identity"] },
+  { id: 3, title: "Scriptures on spiritual awakening", body: "Research and references for the chapter on listening, renewal, and the hidden life.", kind: "Research", date: "Aug 22, 2023", tags: ["Faith", "Reference"] },
+  { id: 4, title: "Letter to my younger self", body: "You did not miss your moment. You were becoming ready to receive it.", kind: "Journal", date: "Jan 09, 2024", tags: ["Healing", "Identity"] },
 ];
+const chapters = ["The Quiet Before", "When the Old Life Ended", "Learning to Listen", "Surrender Is a Door", "The Work of Becoming"];
+const starterDraft = "There was a particular kind of silence that followed the surrender. Not empty — not at all. It was full of everything I had been too busy to hear.\n\nFor the first time, I understood that awakening wasn’t about becoming someone new. It was about remembering who I had always been beneath the noise.";
+const nav = [["⌂", "Creator’s Home"], ["▦", "Projects"], ["⇧", "Bulk Import"], ["⌕", "Knowledge Vault"], ["✦", "Book Architect"], ["✎", "Writing Studio"], ["◷", "Creative Timeline"], ["◫", "Creation Journal"]];
 
-const vault = [
-  { title: "The night everything changed", type: "Story", tag: "Testimony", date: "May 14, 2022" },
-  { title: "What surrender taught me", type: "Reflection", tag: "Theme: Surrender", date: "Jun 03, 2022" },
-  { title: "Scriptures on spiritual awakening", type: "Research", tag: "Reference", date: "Aug 22, 2023" },
-  { title: "Letter to my younger self", type: "Journal", tag: "Personal", date: "Jan 09, 2024" },
-];
-
-const chapters = ["1  The Quiet Before", "2  When the Old Life Ended", "3  Learning to Listen", "4  Surrender Is a Door", "5  The Work of Becoming"];
-
-export default function Home() {
-  const [active, setActive] = useState("Creator's Home");
+export default function CreativeOS() {
+  const [active, setActive] = useState("Creator’s Home");
+  const [notes, setNotes] = useState(initialNotes);
   const [query, setQuery] = useState("");
+  const [importText, setImportText] = useState("");
+  const [draft, setDraft] = useState(starterDraft);
+  const [chapter, setChapter] = useState(2);
+  const [journal, setJournal] = useState("");
   const [organized, setOrganized] = useState(false);
-  const [chapter, setChapter] = useState(3);
-  const [saved, setSaved] = useState(true);
-  const notes = useMemo(() => vault.filter(n => n.title.toLowerCase().includes(query.toLowerCase()) || n.tag.toLowerCase().includes(query.toLowerCase())), [query]);
-  const selectNav = (item: string) => setActive(item);
+  const [notice, setNotice] = useState("Your creative workspace is ready.");
+  const fileInput = useRef<HTMLInputElement>(null);
+  const filtered = useMemo(() => notes.filter(note => `${note.title} ${note.body} ${note.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [notes, query]);
+  const wordCount = draft.trim() ? draft.trim().split(/\s+/).length : 0;
+  const addNote = (body: string, kind = "Imported") => {
+    const clean = body.trim(); if (!clean) return;
+    const title = clean.split(/\n|\.|!/)[0].slice(0, 58) || "Untitled source";
+    setNotes(prev => [{ id: Date.now(), title, body: clean, kind, date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), tags: ["Unsorted"] }, ...prev]);
+  };
+  const importNotes = () => { addNote(importText); setImportText(""); setNotice("Source material added to your Knowledge Vault."); setActive("Knowledge Vault"); };
+  const handleFile = (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { addNote(String(reader.result || ""), "Imported file"); setNotice(`${file.name} is now in your Knowledge Vault.`); setActive("Knowledge Vault"); }; reader.readAsText(file); };
+  const exportDraft = () => { const blob = new Blob([`# Spiritual Awakening\n\n## Chapter ${chapter + 1}: ${chapters[chapter]}\n\n${draft}`], { type: "text/markdown" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "spiritual-awakening-chapter.md"; a.click(); URL.revokeObjectURL(url); setNotice("A Markdown copy of your chapter was downloaded."); };
+  const saveJournal = () => { if (!journal.trim()) return; addNote(journal, "Journal"); setJournal(""); setNotice("Your journal entry was added to the vault as source material."); };
+  const organize = () => { setOrganized(true); setNotes(prev => prev.map(note => note.tags.includes("Unsorted") ? { ...note, tags: ["Emerging thread"] } : note)); setNotice("Themes are ready to review. You remain in control of every assignment."); };
 
-  return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div className="brand"><div className="brand-mark">W</div><div><strong>WEALTHY</strong><span>MINDSETS</span></div></div>
-        <div className="workspace-label">CREATIVE OS <b>PHASE 01</b></div>
-        <nav>{nav.map(([icon, label]) => <button key={label} className={active === label ? "nav-item active" : "nav-item"} onClick={() => selectNav(label)}><i>{icon}</i>{label}</button>)}</nav>
-        <div className="sidebar-bottom">
-          <div className="future-label">ECOSYSTEM</div>
-          {["Reader", "Comic Studio", "Art Studio", "Audio Studio", "Marketplace"].map(x => <button className="nav-item muted" key={x} onClick={() => setActive(x)}><i>○</i>{x}<small>SOON</small></button>)}
-          <button className="nav-item"><i>⚙</i>Settings</button>
-          <div className="profile"><div className="avatar">AH</div><div><b>Above the Hill</b><span>Founder</span></div><em>⌄</em></div>
-        </div>
-      </aside>
-
-      <section className="content">
-        <header className="topbar"><div className="crumb">CREATIONS <span>/</span> SPIRITUAL AWAKENING</div><div className="top-actions"><button className="icon-button">⌕</button><button className="icon-button">♧</button><button className="help">?</button></div></header>
-        <div className="page-wrap">
-          <section className="welcome-row"><div><p className="eyebrow">SUNDAY, JULY 19</p><h1>Make room for the work<br />only <em>you</em> can make.</h1><p className="subcopy">Your ideas have a home. Let’s turn what you’ve carried into what you’re called to share.</p></div><button className="new-button" onClick={() => setActive("Projects")}>+ New creation</button></section>
-
-          <section className="project-card">
-            <div className="cover"><span>SPIRITUAL</span><strong>AWAKENING</strong><i>Above the Hill</i></div>
-            <div className="project-info"><div className="project-meta"><span className="pill">BOOK PROJECT</span><span>Last opened just now</span></div><h2>Spiritual Awakening</h2><p>A journey through surrender, transformation, and the quiet work of becoming.</p><div className="progress-row"><div><span>MANUSCRIPT PROGRESS</span><b>34%</b></div><div className="progress"><i /></div><small>18,420 / 54,000 words</small></div><div className="project-actions"><button className="primary" onClick={() => selectNav("Writing Studio")}>Continue writing <span>→</span></button><button className="secondary" onClick={() => selectNav("Book Architect")}>View outline</button></div></div>
-            <div className="project-stats"><div><b>12</b><span>chapters</span></div><div><b>84</b><span>source notes</span></div><div><b>6</b><span>themes found</span></div><button onClick={() => setActive("Projects")}>Open project ↗</button></div>
-          </section>
-
-          <section className="grid two-up">
-            <div className="panel vault-panel"><div className="panel-head"><div><p className="eyebrow">KNOWLEDGE VAULT</p><h3>Material worth returning to</h3></div><button onClick={() => selectNav("Knowledge Vault")}>Open vault →</button></div><label className="search"><span>⌕</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search your notes, stories, and sources" /></label><div className="note-list">{notes.map(n => <article key={n.title}><div className="note-icon">{n.type === "Research" ? "⌘" : "✦"}</div><div><h4>{n.title}</h4><p>{n.type} · {n.date}</p></div><span>{n.tag}</span></article>)}{notes.length === 0 && <p className="empty">Nothing matched that search yet.</p>}</div></div>
-            <div className="panel organize"><div className="spark">✦</div><p className="eyebrow">CREATIVE INTELLIGENCE</p><h3>{organized ? "Your material has a shape." : "There’s meaning in the mess."}</h3><p>{organized ? "We found 6 recurring themes, 14 stories, and 9 unfinished ideas ready for your attention." : "You have 84 pieces of source material. Let’s discover the threads that connect them."}</p>{organized ? <div className="themes"><span>Surrender</span><span>Identity</span><span>Faith</span></div> : <button className="primary light" onClick={() => setOrganized(true)}>Organize my notes <span>→</span></button>}<small>{organized ? "Review suggestions in Book Architect" : "AI will suggest themes. You decide what belongs."}</small></div>
-          </section>
-
-          <section className="grid studio-grid">
-            <div className="panel writing"><div className="panel-head"><div><p className="eyebrow">WRITING STUDIO</p><h3>Pick up where you left off</h3></div><span className={saved ? "saved" : "saving"}>{saved ? "● Saved" : "● Saving…"}</span></div><div className="manuscript"><div className="chapter-num">CHAPTER {chapter}</div><h2>{chapters[chapter - 1].slice(3)}</h2><p>There was a particular kind of silence that followed the surrender. Not empty — not at all. It was full of everything I had been too busy to hear.</p><p className="faded">For the first time, I understood that awakening wasn’t about becoming someone new. It was about remembering who I had always been beneath the noise.</p></div><div className="writing-foot"><span>1,284 words in this chapter</span><button onClick={() => { setSaved(false); setTimeout(() => setSaved(true), 700); }}>Open in Writing Studio →</button></div></div>
-            <div className="panel journal"><p className="eyebrow">CREATION JOURNAL</p><h3>Leave a note for<br />your future self.</h3><div className="journal-paper"><span>JULY 19, 2026</span><p>Today, I want to remember...</p><button onClick={() => alert("Journal entry ready for your thoughts.")}>Begin entry <b>→</b></button></div></div>
-          </section>
-
-          <section className="lower-grid"><div className="panel timeline"><div className="panel-head"><div><p className="eyebrow">YOUR STORY’S TIMELINE</p><h3>Moments that shaped the manuscript</h3></div><button>View timeline →</button></div><div className="timeline-row"><div><span>2022</span><i /></div><article><b>May 14</b><p>The night everything changed</p></article><article><b>Aug 22</b><p>First notes on surrender</p></article><article><b>Dec 04</b><p>“The old life ended”</p></article></div></div><div className="panel publishing"><p className="eyebrow">WHEN YOU’RE READY</p><h3>Bring your book<br />into the world.</h3><p>Prepare a manuscript for your audience, the Lounge, and the Wealthy Mindsets Shop.</p><button className="secondary">Explore publishing <span>→</span></button></div></section>
-        </div>
-      </section>
-    </main>
-  );
+  return <main className="os-shell">
+    <aside className="rail">
+      <button className="wordmark" onClick={() => setActive("Creator’s Home")} aria-label="Creative OS home"><span>WM</span><div><b>WEALTHY</b><small>MINDSETS</small></div></button>
+      <div className="rail-title">CREATIVE OS <em>FOUNDATION</em></div>
+      <nav>{nav.map(([icon, label]) => <button key={label} className={active === label ? "rail-link selected" : "rail-link"} onClick={() => setActive(label)}><i>{icon}</i><span>{label}</span></button>)}</nav>
+      <div className="ecosystem"><p>WM ECOSYSTEM</p><div><span>◉</span> Lounge <b>CONNECTED</b></div><div><span>◉</span> Shop <b>CONNECTED</b></div><div><span>◉</span> Radio <b>CONNECTED</b></div></div>
+      <div className="founder"><span>AH</span><div><b>Above the Hill</b><small>Founder workspace</small></div></div>
+    </aside>
+    <section className="stage">
+      <header><div><span className="eyebrow">CREATIVE OPERATING SYSTEM</span><h1>{active}</h1></div><div className="header-actions"><span className="presence"><i /> In your flow</span><button className="ghost" onClick={() => setActive("Bulk Import")}>Import material</button><button className="gold" onClick={() => setActive("Writing Studio")}>Continue creating <b>→</b></button></div></header>
+      <div className="notice" role="status"><span>✦</span>{notice}</div>
+      {active === "Creator’s Home" && <Home notes={notes} draft={draft} wordCount={wordCount} organized={organized} onGo={setActive} onOrganize={organize} />}
+      {active === "Bulk Import" && <section className="view import-view"><div className="view-heading"><span className="eyebrow">PRESERVE THE ORIGINAL</span><h2>Bring in the pieces you’ve been carrying.</h2><p>Paste a note or import a plain-text or Markdown file. It enters your Knowledge Vault untouched, ready for your review.</p></div><div className="import-grid"><div className="input-card"><label>PASTE SOURCE MATERIAL<textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="A prayer, voice-note transcript, scene, research excerpt, or unfinished thought..." /></label><button className="gold wide" onClick={importNotes} disabled={!importText.trim()}>Add to Knowledge Vault <b>→</b></button></div><div className="drop-card"><span>⇧</span><h3>Import a file</h3><p>Plain text and Markdown are ready in this first release. Original text is retained alongside the organized view.</p><input ref={fileInput} type="file" accept=".txt,.md,text/plain,text/markdown" onChange={handleFile} hidden /><button className="ghost" onClick={() => fileInput.current?.click()}>Choose a file</button></div></div></section>}
+      {active === "Knowledge Vault" && <section className="view"><div className="view-heading split"><div><span className="eyebrow">YOUR SOURCE LIBRARY</span><h2>Knowledge Vault</h2><p>{notes.length} pieces of material, all still yours.</p></div><button className="gold" onClick={organize}>✦ Organize my notes</button></div><label className="searchbox">⌕<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search your stories, research, reflections, and journal entries" /></label><div className="vault-list">{filtered.map(note => <article key={note.id}><div className="vault-icon">{note.kind === "Research" ? "⌘" : "✦"}</div><div><span>{note.kind} · {note.date}</span><h3>{note.title}</h3><p>{note.body}</p></div><div className="tag-stack">{note.tags.map(tag => <b key={tag}>{tag}</b>)}</div></article>)}{!filtered.length && <p className="empty-state">Nothing matched that search. Your original material remains safe in the vault.</p>}</div></section>}
+      {active === "Book Architect" && <section className="view architect"><div className="view-heading"><span className="eyebrow">MANUSCRIPT ARCHITECTURE</span><h2>Shape the path before you write it.</h2><p>Use these chapters as a working structure. The source material stays available beside the outline.</p></div><div className="outline"><div>{chapters.map((item, index) => <button key={item} className={chapter === index ? "chapter active-chapter" : "chapter"} onClick={() => setChapter(index)}><b>{String(index + 1).padStart(2, "0")}</b><span>{item}</span><i>{index === chapter ? "Editing" : "Outline"}</i></button>)}</div><aside><span className="eyebrow">CHAPTER {chapter + 1}</span><h3>{chapters[chapter]}</h3><p>Source suggestions are drawn from your vault. They are suggestions only; you decide what becomes part of the manuscript.</p><div className="source-chips">{notes.slice(0, 3).map(n => <button key={n.id} onClick={() => setActive("Knowledge Vault")}>{n.title}</button>)}</div><button className="gold wide" onClick={() => setActive("Writing Studio")}>Write this chapter <b>→</b></button></aside></div></section>}
+      {active === "Writing Studio" && <section className="view writing-view"><div className="writing-toolbar"><div><span className="eyebrow">SPIRITUAL AWAKENING / CHAPTER {chapter + 1}</span><h2>{chapters[chapter]}</h2></div><div><span className="draft-status">● Active draft</span><button className="ghost" onClick={exportDraft}>Export Markdown</button></div></div><textarea className="writer" value={draft} onChange={e => setDraft(e.target.value)} aria-label="Manuscript editor" /><footer className="writer-footer"><span>{wordCount.toLocaleString()} words in this chapter</span><span>Your voice leads. AI suggestions will always be review-first.</span></footer></section>}
+      {active === "Creation Journal" && <section className="view journal-view"><div className="view-heading"><span className="eyebrow">CREATION JOURNAL</span><h2>Leave a note for your future self.</h2><p>The journal becomes private source material for your work, not a public performance.</p></div><div className="journal-card"><span>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase()}</span><textarea value={journal} onChange={e => setJournal(e.target.value)} placeholder="Today, I want to remember..." /><button className="gold" onClick={saveJournal} disabled={!journal.trim()}>Keep this note <b>→</b></button></div></section>}
+      {active === "Projects" && <section className="view"><div className="view-heading"><span className="eyebrow">ACTIVE CREATION</span><h2>Spiritual Awakening</h2><p>Your first proof that the Creative OS works: a real book made from the material only you could have gathered.</p></div><div className="project-focus"><div className="book-cover"><small>SPIRITUAL</small><strong>AWAKENING</strong><em>Above the Hill</em></div><div><span className="eyebrow">BOOK PROJECT · ACTIVE</span><h3>34% manuscript progress</h3><div className="meter"><i /></div><p>{wordCount.toLocaleString()} chapter words · {notes.length} source pieces · {organized ? "themes reviewed" : "themes ready to discover"}</p><button className="gold" onClick={() => setActive("Writing Studio")}>Open Writing Studio <b>→</b></button></div></div></section>}
+      {active === "Creative Timeline" && <Timeline notes={notes} />}
+    </section>
+  </main>;
 }
+
+function Home({ notes, draft, wordCount, organized, onGo, onOrganize }: { notes: Note[]; draft: string; wordCount: number; organized: boolean; onGo: (x: string) => void; onOrganize: () => void }) { return <section className="home view"><div className="hero"><div className="hero-copy"><span className="eyebrow">THE HOME FOR YOUR WORK</span><h2>Make room for the work<br />only <em>you</em> can make.</h2><p>Turn what you’ve carried into what you’re called to share—without losing the truth of where it began.</p><div><button className="gold" onClick={() => onGo("Writing Studio")}>Continue writing <b>→</b></button><button className="text-button" onClick={() => onGo("Book Architect")}>View manuscript map</button></div></div><div className="hero-art"><div className="orbit" /><div className="record"><i /></div><span>SPIRITUAL<br />AWAKENING</span></div></div><div className="metrics"><div><span>MANUSCRIPT</span><b>34%</b><i><em /></i><small>18,420 / 54,000 words</small></div><div><span>KNOWLEDGE VAULT</span><b>{notes.length}</b><small>Pieces of living source material</small></div><div><span>CREATOR VOICE</span><b>Yours</b><small>Review-first AI assistance</small></div></div><div className="home-grid"><section className="home-card vault-home"><div className="card-head"><div><span className="eyebrow">KNOWLEDGE VAULT</span><h3>Return to what matters.</h3></div><button onClick={() => onGo("Knowledge Vault")}>Open vault →</button></div>{notes.slice(0, 3).map(note => <button className="note-row" key={note.id} onClick={() => onGo("Knowledge Vault")}><span>✦</span><div><b>{note.title}</b><small>{note.kind} · {note.date}</small></div><em>{note.tags[0]}</em></button>)}</section><section className="home-card intelligence"><span className="spark">✦</span><span className="eyebrow">CREATIVE INTELLIGENCE</span><h3>{organized ? "Your threads are ready." : "There’s meaning in the mess."}</h3><p>{organized ? "Themes are organized as reviewable suggestions. Nothing was changed without you." : `You have ${notes.length} pieces of source material ready to become a coherent manuscript.`}</p><button className="gold pale" onClick={onOrganize}>{organized ? "Review the threads" : "Organize my notes"} <b>→</b></button></section></div><section className="writing-peek"><div><span className="eyebrow">WRITING STUDIO · ACTIVE DRAFT</span><h3>Learning to Listen</h3><p>{draft.slice(0, 220)}…</p><footer><span>{wordCount.toLocaleString()} words in this chapter</span><button onClick={() => onGo("Writing Studio")}>Open the studio →</button></footer></div></section></section> }
+function Timeline({ notes }: { notes: Note[] }) { return <section className="view"><div className="view-heading"><span className="eyebrow">CREATIVE TIMELINE</span><h2>Moments that shaped the manuscript.</h2><p>Your source material, in the order it entered your story.</p></div><div className="timeline">{notes.map((note, i) => <article key={note.id}><i>{String(i + 1).padStart(2, "0")}</i><div><span>{note.date}</span><h3>{note.title}</h3><p>{note.body}</p></div></article>)}</div></section> }
