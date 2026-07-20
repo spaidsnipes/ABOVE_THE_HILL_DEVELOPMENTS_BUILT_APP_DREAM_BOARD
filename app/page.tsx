@@ -27,10 +27,11 @@ const shopItems = [
 ];
 
 type CommunityStatus = "local" | "connecting" | "ready" | "needs-setup";
-type CommunityPostRow = { id: string; body: string; topic: string; created_at: string; profiles: { display_name: string | null; wm_handle: string | null } | null };
+type CommunityPostRow = { id: string; body: string; topic: string; created_at: string; profiles: Array<{ display_name: string | null; wm_handle: string | null }> | { display_name: string | null; wm_handle: string | null } | null };
 
 function toLoungePost(row: CommunityPostRow): LoungePost {
-  const author = row.profiles?.display_name || (row.profiles?.wm_handle ? `@${row.profiles.wm_handle}` : "WM member");
+  const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+  const author = profile?.display_name || (profile?.wm_handle ? `@${profile.wm_handle}` : "WM member");
   return { id: row.id, author, body: row.body, topic: row.topic, time: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(row.created_at)), likes: 0 };
 }
 
