@@ -1,0 +1,4 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "./node_modules/.bin/next build"
+}
