@@ -11,6 +11,7 @@ type Snapshot = { id: number; label: string; body: string; chapter: number; date
 type ActiveView = "Creator’s Home" | "Creator Compass" | "Projects" | "Bulk Import" | "Knowledge Vault" | "Book Architect" | "Writing Studio" | "Creative Timeline" | "Creation Journal" | "Version History" | "Reader" | "Audiobook Studio" | "AI Studio" | "WM ID" | "Lounge" | "Shop" | "Radio" | "Settings";
 type CreatorSeason = "planting" | "growing" | "building" | "blooming" | "harvest" | "stewardship" | "new-seeds";
 type DreamTheme = "emerald-gold" | "midnight-gold" | "violet-gold" | "blue-gold";
+type ImportBatch = { id: string; label: string; status: string; file_count: number; uploaded_count: number; failed_count: number; total_bytes: number; created_at: string };
 
 const initialNotes: Note[] = [
   { id: 1, title: "The night everything changed", body: "A testimony about the moment silence became an invitation instead of an absence.", kind: "Testimony", date: "May 14, 2022", tags: ["Surrender", "Awakening"] },
@@ -40,11 +41,20 @@ function readLocal<T>(key: string, fallback: T): T {
   try { const saved = window.localStorage.getItem(key); return saved ? JSON.parse(saved) as T : fallback; } catch { return fallback; }
 }
 
+function storageSafeName(name: string) {
+  return name.normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "untitled-file";
+}
+
 export default function Dreamboard() {
   const [active, setActive] = useState<ActiveView>("Creator’s Home");
   const [notes, setNotes] = useState(initialNotes);
   const [query, setQuery] = useState("");
   const [importText, setImportText] = useState("");
+  const [importFiles, setImportFiles] = useState<File[]>([]);
+  const [importLabel, setImportLabel] = useState("My source library");
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ uploaded: 0, failed: 0, total: 0 });
+  const [importBatches, setImportBatches] = useState<ImportBatch[]>([]);
   const [draft, setDraft] = useState(starterDraft);
   const [chapter, setChapter] = useState(2);
   const [journal, setJournal] = useState("");
@@ -76,6 +86,7 @@ export default function Dreamboard() {
   const [narrationUrl, setNarrationUrl] = useState("");
   const [narrationName, setNarrationName] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const bulkFileInput = useRef<HTMLInputElement>(null);
   const narrationInput = useRef<HTMLInputElement>(null);
   const audio = useRef<HTMLAudioElement>(null);
 
@@ -91,6 +102,15 @@ export default function Dreamboard() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase || !wmUser) return;
+    const loadBatches = async () => {
+      const { data } = await supabase.from("dreamboard_import_batches").select("id, label, status, file_count, uploaded_count, failed_count, total_bytes, created_at").order("created_at", { ascending: false }).limit(8);
+      if (data) setImportBatches(data as ImportBatch[]);
+    };
+    void loadBatches();
+  }, [wmUser]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-notes", JSON.stringify(notes)); }, [notes, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-draft", JSON.stringify(draft)); }, [draft, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-lounge", JSON.stringify(posts)); }, [posts, hydrated]);
@@ -150,6 +170,42 @@ export default function Dreamboard() {
   };
   const importNotes = () => { addNote(importText); setImportText(""); setNotice("Source material was added to your Knowledge Vault."); setActive("Knowledge Vault"); };
   const handleFile = (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { addNote(String(reader.result || ""), "Imported file"); setNotice(`${file.name} is now in your Knowledge Vault.`); setActive("Knowledge Vault"); }; reader.readAsText(file); };
+  const chooseImportFiles = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setImportFiles(files);
+    setImportProgress({ uploaded: 0, failed: 0, total: files.length });
+    if (files.length) setNotice(`${files.length.toLocaleString()} file${files.length === 1 ? "" : "s"} staged. Nothing uploads until you start the private import.`);
+  };
+  const uploadImportBatch = async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase || !wmUser) { setNotice("Set up WM ID before starting a private import."); setActive("WM ID"); return; }
+    if (!importFiles.length) { setNotice("Choose one or more files first."); return; }
+    setImporting(true);
+    setImportProgress({ uploaded: 0, failed: 0, total: importFiles.length });
+    const totalBytes = importFiles.reduce((total, file) => total + file.size, 0);
+    const { data: batch, error: batchError } = await supabase.from("dreamboard_import_batches").insert({ owner_id: wmUser.id, source: "device", label: importLabel.trim() || "My source library", file_count: importFiles.length, total_bytes: totalBytes }).select("id, label, status, file_count, uploaded_count, failed_count, total_bytes, created_at").single();
+    if (batchError || !batch) { setImporting(false); setNotice("Dreamboard could not open the private import batch. Please try again."); return; }
+    let nextIndex = 0;
+    let uploaded = 0;
+    let failed = 0;
+    const uploadOne = async () => {
+      while (nextIndex < importFiles.length) {
+        const index = nextIndex++;
+        const file = importFiles[index];
+        const path = `${wmUser.id}/${batch.id}/${String(index + 1).padStart(5, "0")}-${storageSafeName(file.name)}`;
+        const { error: storageError } = await supabase.storage.from("dreamboard-private").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
+        const { error: documentError } = storageError ? { error: storageError } : await supabase.from("dreamboard_source_documents").insert({ owner_id: wmUser.id, batch_id: batch.id, file_name: file.name, mime_type: file.type || "application/octet-stream", storage_path: path, byte_size: file.size, source: "device" });
+        if (documentError) failed += 1; else uploaded += 1;
+        setImportProgress({ uploaded, failed, total: importFiles.length });
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(3, importFiles.length) }, () => uploadOne()));
+    const status = failed ? (uploaded ? "partial" : "failed") : "uploaded";
+    await supabase.from("dreamboard_import_batches").update({ status, uploaded_count: uploaded, failed_count: failed, updated_at: new Date().toISOString() }).eq("id", batch.id);
+    setImportBatches(previous => [{ ...batch, status, uploaded_count: uploaded, failed_count: failed }, ...previous].slice(0, 8));
+    setImporting(false);
+    setNotice(failed ? `${uploaded.toLocaleString()} files were secured; ${failed.toLocaleString()} need another try. Your batch record is saved.` : `${uploaded.toLocaleString()} files are now privately secured in your Dreamboard vault. Text extraction and indexing come next.`);
+  };
   const exportDraft = () => { const blob = new Blob([`# Spiritual Awakening\n\n## Chapter ${chapter + 1}: ${chapters[chapter]}\n\n${draft}`], { type: "text/markdown" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "spiritual-awakening-chapter.md"; link.click(); URL.revokeObjectURL(url); setNotice("A Markdown copy of your chapter was downloaded."); };
   const saveSnapshot = () => { const words = draft.trim() ? draft.trim().split(/\s+/).length : 0; const snapshot: Snapshot = { id: Date.now(), label: `Chapter ${chapter + 1} · ${chapters[chapter]}`, body: draft, chapter, date: new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }), words }; setSnapshots(prev => [snapshot, ...prev].slice(0, 20)); setNotice("A protected local version was saved. Cloud history will join it after WM ID is connected."); };
   const restoreSnapshot = (snapshot: Snapshot) => { setDraft(snapshot.body); setChapter(snapshot.chapter); setNotice(`Restored ${snapshot.label}. Your other saved versions are still available.`); setActive("Writing Studio"); };
@@ -215,7 +271,7 @@ export default function Dreamboard() {
       <header><div><span className="eyebrow">DREAMBOARD · CREATIVE OPERATING SYSTEM</span><h1>{active}</h1></div><div className="header-actions"><button className="wm-account" onClick={() => setActive("WM ID")}>{wmUser ? `@${wmHandle || wmUser.email?.split("@")[0] || "member"}` : "Set up WM ID"}</button><span className="presence"><i /> {hydrated ? "Saved on this device" : "Opening workspace"}</span><button className="ghost" onClick={() => setActive("Bulk Import")}>Import material</button><button className="gold" onClick={() => setActive("Writing Studio")}>Continue creating <b>→</b></button></div></header>
       <div className="notice" role="status"><span>✦</span>{notice}</div>
       {active === "Creator’s Home" && <Home notes={notes} draft={draft} wordCount={wordCount} organized={organized} wisdomMode={wisdomMode} creatorSeason={creatorSeason} onGo={setActive} onOrganize={organize} />}
-      {active === "Bulk Import" && <section className="view import-view"><div className="view-heading"><span className="eyebrow">PRESERVE THE ORIGINAL</span><h2>Bring in the pieces you’ve been carrying.</h2><p>Paste a note or import a plain-text or Markdown file. It enters your Knowledge Vault untouched, ready for your review.</p></div><div className="import-grid"><div className="input-card"><label>PASTE SOURCE MATERIAL<textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="A prayer, voice-note transcript, scene, research excerpt, or unfinished thought..." /></label><button className="gold wide" onClick={importNotes} disabled={!importText.trim()}>Add to Knowledge Vault <b>→</b></button></div><div className="drop-card"><span>⇧</span><h3>Import a file</h3><p>Plain text and Markdown are ready in this first release. Original text is retained alongside the organized view.</p><input ref={fileInput} type="file" accept=".txt,.md,text/plain,text/markdown" onChange={handleFile} hidden /><button className="ghost" onClick={() => fileInput.current?.click()}>Choose a file</button></div></div></section>}
+      {active === "Bulk Import" && <BulkImport importText={importText} setImportText={setImportText} onAddText={importNotes} singleInput={fileInput} onSingleFile={handleFile} bulkInput={bulkFileInput} onFiles={chooseImportFiles} files={importFiles} label={importLabel} setLabel={setImportLabel} importing={importing} progress={importProgress} batches={importBatches} signedIn={Boolean(wmUser)} onStart={() => void uploadImportBatch()} onWmId={() => setActive("WM ID")} />}
       {active === "Knowledge Vault" && <section className="view"><div className="view-heading split"><div><span className="eyebrow">YOUR SOURCE LIBRARY</span><h2>Knowledge Vault</h2><p>{notes.length} pieces of material, all still yours.</p></div><button className="gold" onClick={organize}>✦ Organize my notes</button></div><label className="searchbox">⌕<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search your stories, research, reflections, and journal entries" /></label><div className="vault-list">{filtered.map(note => <article key={note.id}><div className="vault-icon">{note.kind === "Research" ? "⌘" : "✦"}</div><div><span>{note.kind} · {note.date}</span><h3>{note.title}</h3><p>{note.body}</p></div><div className="tag-stack">{note.tags.map(tag => <b key={tag}>{tag}</b>)}</div></article>)}{!filtered.length && <p className="empty-state">Nothing matched that search. Your original material remains safe in the vault.</p>}</div></section>}
       {active === "Book Architect" && <section className="view architect"><div className="view-heading"><span className="eyebrow">MANUSCRIPT ARCHITECTURE</span><h2>Shape the path before you write it.</h2><p>Use these chapters as a working structure. The source material stays available beside the outline.</p></div><div className="outline"><div>{chapters.map((item, index) => <button key={item} className={chapter === index ? "chapter active-chapter" : "chapter"} onClick={() => setChapter(index)}><b>{String(index + 1).padStart(2, "0")}</b><span>{item}</span><i>{index === chapter ? "Editing" : "Outline"}</i></button>)}</div><aside><span className="eyebrow">CHAPTER {chapter + 1}</span><h3>{chapters[chapter]}</h3><p>Source suggestions are drawn from your vault. They are suggestions only; you decide what becomes part of the manuscript.</p><div className="source-chips">{notes.slice(0, 3).map(n => <button key={n.id} onClick={() => setActive("Knowledge Vault")}>{n.title}</button>)}</div><button className="gold wide" onClick={() => setActive("Writing Studio")}>Write this chapter <b>→</b></button></aside></div></section>}
       {active === "Writing Studio" && <section className="view writing-view"><div className="writing-toolbar"><div><span className="eyebrow">SPIRITUAL AWAKENING / CHAPTER {chapter + 1}</span><h2>{chapters[chapter]}</h2></div><div><span className="draft-status">● Saved on this device</span><button className="ghost" onClick={saveSnapshot}>Save version</button><button className="ghost" onClick={exportDraft}>Export Markdown</button></div></div><textarea className="writer" value={draft} onChange={e => setDraft(e.target.value)} aria-label="Manuscript editor" /><footer className="writer-footer"><span>{wordCount.toLocaleString()} words in this chapter</span><button className="text-button" onClick={() => setActive("AI Studio")}>Ask Dreamboard AI →</button></footer></section>}
@@ -235,6 +291,8 @@ export default function Dreamboard() {
     </section>
   </main>;
 }
+
+function BulkImport({ importText, setImportText, onAddText, singleInput, onSingleFile, bulkInput, onFiles, files, label, setLabel, importing, progress, batches, signedIn, onStart, onWmId }: { importText: string; setImportText: (value: string) => void; onAddText: () => void; singleInput: RefObject<HTMLInputElement | null>; onSingleFile: (event: ChangeEvent<HTMLInputElement>) => void; bulkInput: RefObject<HTMLInputElement | null>; onFiles: (event: ChangeEvent<HTMLInputElement>) => void; files: File[]; label: string; setLabel: (value: string) => void; importing: boolean; progress: { uploaded: number; failed: number; total: number }; batches: ImportBatch[]; signedIn: boolean; onStart: () => void; onWmId: () => void }) { const totalMb = files.reduce((total, file) => total + file.size, 0) / 1024 / 1024; return <section className="view import-view"><div className="view-heading"><span className="eyebrow">PRIVATE VAULT INTAKE</span><h2>Bring the archive in without losing it.</h2><p>Dreamboard now secures source files into your private vault with a batch record. Choose a smaller first batch to test your connection, then bring in the rest in focused batches.</p></div><div className="bulk-import-card"><div className="bulk-head"><div><span className="eyebrow">PRIVATE BATCH IMPORT</span><h3>{files.length ? `${files.length.toLocaleString()} files staged` : "Your source library is welcome here."}</h3></div><span className={signedIn ? "import-status ready" : "import-status"}>{signedIn ? "WM ID CONNECTED" : "WM ID REQUIRED"}</span></div><label>IMPORT LABEL<input value={label} onChange={event => setLabel(event.target.value)} maxLength={180} placeholder="e.g. Spiritual Awakening — Google Drive archive" /></label><input ref={bulkInput} type="file" multiple onChange={onFiles} hidden /><button className="bulk-drop" onClick={() => bulkInput.current?.click()}><span>⇧</span><b>{files.length ? "Choose different files" : "Choose files to secure"}</b><small>PDF, DOCX, TXT, Markdown, images, audio, and research files are preserved as originals. Individual files can be up to 50 MB.</small></button>{files.length > 0 && <div className="import-summary"><span>{totalMb.toFixed(totalMb >= 100 ? 0 : 1)} MB staged</span><span>{progress.uploaded.toLocaleString()} secured · {progress.failed.toLocaleString()} need retry</span></div>}<div className="bulk-actions"><button className="gold" onClick={onStart} disabled={!files.length || importing || !signedIn}>{importing ? `Securing ${progress.uploaded + progress.failed} of ${progress.total}…` : "Start private import"} <b>→</b></button>{!signedIn && <button className="ghost" onClick={onWmId}>Set up WM ID</button>}</div><p className="import-truth">Files are private to the signed-in creator. This release preserves and records originals; text extraction, search, Google Drive consent, and AI indexing are the next processing layer.</p></div><div className="import-grid"><div className="input-card"><label>PASTE A SINGLE SOURCE<textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="A prayer, voice-note transcript, scene, research excerpt, or unfinished thought..." /></label><button className="gold wide" onClick={onAddText} disabled={!importText.trim()}>Add to local Knowledge Vault <b>→</b></button></div><div className="drop-card"><span>⇧</span><h3>Quick text import</h3><p>Plain text and Markdown can enter your current browser workspace immediately.</p><input ref={singleInput} type="file" accept=".txt,.md,text/plain,text/markdown" onChange={onSingleFile} hidden /><button className="ghost" onClick={() => singleInput.current?.click()}>Choose a text file</button></div></div><section className="batch-history"><div className="card-head"><div><span className="eyebrow">PRIVATE IMPORT HISTORY</span><h3>Every batch has a trail.</h3></div></div>{batches.length ? <div>{batches.map(batch => <article key={batch.id}><span className={`batch-dot ${batch.status}`} /><div><b>{batch.label}</b><small>{new Date(batch.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {batch.uploaded_count.toLocaleString()}/{batch.file_count.toLocaleString()} secured</small></div><em>{batch.status}</em></article>)}</div> : <p>No private batches yet. Your first batch will appear here with its upload status.</p>}</section></section>; }
 
 function Home({ notes, draft, wordCount, organized, wisdomMode, creatorSeason, onGo, onOrganize }: { notes: Note[]; draft: string; wordCount: number; organized: boolean; wisdomMode: boolean; creatorSeason: CreatorSeason; onGo: (view: ActiveView) => void; onOrganize: () => void }) { return <section className="home view"><div className="hero"><div className="hero-copy"><span className="eyebrow">THE HOME FOR YOUR WORK</span><h2>Write the vision.<br />Make it <em>plain.</em></h2><p>Turn what you’ve carried into what you’re called to share—without losing the truth of where it began.</p><div><button className="gold" onClick={() => onGo("Writing Studio")}>Continue writing <b>→</b></button><button className="text-button" onClick={() => onGo("Creator Compass")}>Open creator compass</button></div></div><div className="hero-art hero-manuscript"><div className="orbit" /><div className="manuscript-card"><span>SPIRITUAL AWAKENING</span><b>CHAPTER 03</b><i>Learning to Listen</i><p>There was a particular kind of silence that followed the surrender.</p><footer><em /> Draft in progress</footer></div><div className="margin-note">YOUR<br />VOICE<br />LEADS</div></div></div><div className="metrics"><div><span>MANUSCRIPT</span><b>34%</b><i><em /></i><small>{wordCount.toLocaleString()} current draft words</small></div><div><span>KNOWLEDGE VAULT</span><b>{notes.length}</b><small>Pieces of living source material</small></div><div><span>CREATOR SEASON</span><b>{creatorSeason.replace("-", " ")}</b><small>{wisdomMode ? "Wisdom reflections on" : "Your pace, your direction"}</small></div></div><div className="home-grid"><section className="home-card vault-home"><div className="card-head"><div><span className="eyebrow">KNOWLEDGE VAULT</span><h3>Return to what matters.</h3></div><button onClick={() => onGo("Knowledge Vault")}>Open vault →</button></div>{notes.slice(0, 3).map(note => <button className="note-row" key={note.id} onClick={() => onGo("Knowledge Vault")}><span>✦</span><div><b>{note.title}</b><small>{note.kind} · {note.date}</small></div><em>{note.tags[0]}</em></button>)}</section><section className="home-card intelligence"><span className="spark">✦</span><span className="eyebrow">CREATIVE INTELLIGENCE</span><h3>{organized ? "Your threads are ready." : "There’s meaning in the mess."}</h3><p>{organized ? "Themes are organized as reviewable suggestions. Nothing was changed without you." : `You have ${notes.length} pieces of source material ready to become a coherent manuscript.`}</p><button className="gold pale" onClick={onOrganize}>{organized ? "Review the threads" : "Organize my notes"} <b>→</b></button></section></div><section className="writing-peek"><div><span className="eyebrow">WRITING STUDIO · ACTIVE DRAFT</span><h3>Learning to Listen</h3><p>{draft.slice(0, 220)}…</p><footer><span>{wordCount.toLocaleString()} words in this chapter</span><button onClick={() => onGo("Writing Studio")}>Open the studio →</button></footer></div></section></section>; }
 
