@@ -86,11 +86,17 @@ whenever a system changes tier.
 - **AI route** (`app/api/ai/route.ts`) — OpenAI-compatible chat proxy; honest
   503 until `AI_BASE_URL`/`AI_API_KEY`/`AI_MODEL` are set. Companion runs are
   logged to `dreamboard_companion_runs` either way.
-- **Lounge / Shop / Radio (data layer)** — shared posts, product catalog, and
-  station rows in Supabase; WOW World live surfaces embedded via iframe. Radio
-  audio playback of a pasted licensed stream works.
+- **Shop / Radio (data layer)** — product catalog and station rows in
+  Supabase; WOW World live surfaces embedded via iframe. Radio audio playback
+  of a pasted licensed stream works. (Lounge is now a full native layer.)
 - **Settings / Creator Compass** — theme, season, wisdom mode persist to the
   profile.
+- **Lounge** (2026-07-22) — native Dreamboard community layer in
+  `app/lounge.tsx` + `supabase/dreamboard-lounge-community.sql`: real posts
+  (with optional project reference), threaded comments, private reporting,
+  per-user blocking (client-filtered + stored), and a moderation-hide flag.
+  The WOW World iframe remains but is explicitly the secondary surface, not
+  the whole feature. Honest setup/empty states.
 - **Collaboration foundation** (2026-07-22) — `app/collaboration.tsx` +
   `supabase/dreamboard-collaboration.sql` (ADR-0006): project members,
   invitations by email, six roles (owner/admin/editor/contributor/reviewer/

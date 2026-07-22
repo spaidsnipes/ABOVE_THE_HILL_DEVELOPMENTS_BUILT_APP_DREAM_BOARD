@@ -202,3 +202,17 @@
 .collab-compose textarea{width:100%;min-height:64px;resize:vertical;border:1px solid rgba(127,127,127,.3);background:rgba(255,255,255,.4);color:inherit;border-radius:10px;padding:10px 12px;font:13px/1.5 "DM Sans";outline:0;margin-bottom:8px}
 .collab-activity{display:grid;gap:4px}
 .collab-activity p{margin:0;font-size:12px;opacity:.78}
+
+/* Lounge community layer */
+.post-main{flex:1}
+.post-project-ref{display:inline-block;font:11px "DM Sans";color:#a57628;border:1px solid rgba(165,118,40,.3);border-radius:99px;padding:2px 9px;margin:4px 0}
+.post-actions{display:flex;gap:14px;margin-top:8px}
+.post-actions .text-button{font-size:12px}
+.lounge-project-ref{width:100%;border:1px solid rgba(127,127,127,.3);background:rgba(255,255,255,.4);color:inherit;border-radius:9px;padding:9px 11px;font:12px "DM Sans";outline:0;margin:8px 0}
+.lounge-comments{margin-top:10px;border-top:1px solid rgba(127,127,127,.15);padding-top:9px;display:grid;gap:8px}
+.lounge-comment{display:grid;gap:2px}
+.lounge-comment b{font-size:12px}
+.lounge-comment p{margin:0;font-size:12px;line-height:1.5;opacity:.85}
+.lounge-comment .text-button{font-size:10px;opacity:.6;justify-self:start}
+.lounge-comment-compose{display:flex;gap:8px;margin-top:4px}
+.lounge-comment-compose input{flex:1;border:1px solid rgba(127,127,127,.3);background:rgba(255,255,255,.4);color:inherit;border-radius:9px;padding:8px 10px;font:12px "DM Sans";outline:0}
