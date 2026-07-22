@@ -21,6 +21,7 @@ community → import → vision-vault.
 | `dreamboard_document_versions` | creator-workspace | Writing Studio version history |
 | `dreamboard_import_batches` | import-foundation | Bulk import batch records |
 | `dreamboard_source_documents` | import-foundation | Per-file import records (storage paths) |
+| `dreamboard_chapters` | book-architect | Real chapter outline: part, title, purpose, notes, status, sort order |
 | `dreamboard_vision_entries` | vision-vault | **Vision Vault**: the creator's own ideas/dreams/goals (ADR-0004) |
 
 Storage buckets: `dreamboard-private` (import originals, path
@@ -29,4 +30,4 @@ Storage buckets: `dreamboard-private` (import originals, path
 Local-fallback keys (browser localStorage): `dreamboard-notes-v2`,
 `dreamboard-draft-v2`, `dreamboard-lounge`, `dreamboard-cart`,
 `dreamboard-radio-stream`, `dreamboard-snapshots`,
-`dreamboard-vision-entries`.
+`dreamboard-vision-entries`, `dreamboard-chapters`.

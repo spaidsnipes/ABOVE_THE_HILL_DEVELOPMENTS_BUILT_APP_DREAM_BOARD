@@ -56,6 +56,12 @@ whenever a system changes tier.
   (vision, knowledge, documents), attach current writing document. Honest
   fallback when the migration hasn't run; Passport required (no local mode
   promised).
+- **Book Architect** (2026-07-22) — real multi-chapter outline in
+  `app/book-architect.tsx` + `supabase/dreamboard-book-architect.sql`:
+  add/edit (title, purpose, notes, status)/duplicate/delete-with-confirm,
+  controlled reorder, completion states, localStorage fallback when signed
+  out. Writing Studio, Reader, exports, and snapshots use the real chapter
+  titles. No chapters are generated for the user.
 - **Creator Home** (2026-07-22) — extracted to `app/creator-home.tsx`; shows
   real data only: recent Vision Vault captures, Knowledge Vault sources,
   recent versions, imports needing retry, and a deterministic, explained
@@ -68,8 +74,6 @@ whenever a system changes tier.
   no real clustering or AI organization.
 - **Local Companion** — regex keyword routing to skill/persona names with
   templated output. The 30 skills / 30 personas are lists, not behaviors.
-- **Book Architect** — single hardcoded "Untitled chapter"; no real outline or
-  multi-chapter model.
 - **Reader** — renders the current draft only; fine as a preview.
 - **Audiobook Studio** — session-only object-URL playback; no cloud storage.
 - **Shop cart** — local cart math only; no checkout/payments (disclosed).
@@ -88,8 +92,8 @@ whenever a system changes tier.
   preserved originals only).
 - Google Drive import.
 - Embeddings / semantic graph links; real graph exploration UI.
-- Multi-chapter data model (Book Architect); project tasks, milestones,
-  collaborators. Attaching vision/knowledge entries to projects from their
+- Project tasks, milestones, collaborators. Linking chapters to specific
+  writing documents (Writing Studio still holds one document). Attaching vision/knowledge entries to projects from their
   vault views.
 - Collaboration: shared workspaces, comments, permissions, organizations.
 - Publishing pipeline (book/site/newsletter outputs), Marketplace checkout,
