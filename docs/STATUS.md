@@ -48,6 +48,14 @@ whenever a system changes tier.
   audio playback of a pasted licensed stream works.
 - **Settings / Creator Compass** — theme, season, wisdom mode persist to the
   profile.
+- **Projects** (2026-07-22) — real multi-project support in
+  `app/projects.tsx`: create/edit/archive/restore/delete-with-confirm,
+  full lifecycle statuses (idea → … → completed/archived), mission /
+  intended outcome / definition of done / next action
+  (`supabase/dreamboard-project-model.sql`), attached-material counts
+  (vision, knowledge, documents), attach current writing document. Honest
+  fallback when the migration hasn't run; Passport required (no local mode
+  promised).
 - **Creator Home** (2026-07-22) — extracted to `app/creator-home.tsx`; shows
   real data only: recent Vision Vault captures, Knowledge Vault sources,
   recent versions, imports needing retry, and a deterministic, explained
@@ -65,8 +73,9 @@ whenever a system changes tier.
 - **Reader** — renders the current draft only; fine as a preview.
 - **Audiobook Studio** — session-only object-URL playback; no cloud storage.
 - **Shop cart** — local cart math only; no checkout/payments (disclosed).
-- **Projects / Creative Timeline / Creation Journal** — thin views over the
-  single writing document and local notes. (Creator Home now real.) `dreamboard_projects` and
+- **Creative Timeline / Creation Journal** — thin views over the single
+  writing document and local notes. `dreamboard_timeline_events` still
+  unused by the UI. `dreamboard_projects` and
   `dreamboard_timeline_events` tables exist but the UI doesn't use them.
 - **ChatGPT workspace auth** (`app/chatgpt-auth.ts`) — starter-template
   leftover; unused by the app.
@@ -79,8 +88,9 @@ whenever a system changes tier.
   preserved originals only).
 - Google Drive import.
 - Embeddings / semantic graph links; real graph exploration UI.
-- Multi-project, multi-chapter data model; project containers with tasks,
-  milestones, collaborators.
+- Multi-chapter data model (Book Architect); project tasks, milestones,
+  collaborators. Attaching vision/knowledge entries to projects from their
+  vault views.
 - Collaboration: shared workspaces, comments, permissions, organizations.
 - Publishing pipeline (book/site/newsletter outputs), Marketplace checkout,
   creator economy.
