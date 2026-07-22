@@ -33,10 +33,13 @@ test("renders the core navigation, including both vaults", async () => {
   const html = await (await render()).text();
   for (const view of [
     "Creator’s Home",
+    "Search",
     "Passport",
     "Vision Vault",
     "Knowledge Vault",
     "Creative Graph",
+    "Book Architect",
+    "Projects",
     "Writing Studio",
     "AI Studio",
   ]) {
