@@ -176,3 +176,8 @@
 .finishing-item .ghost,.finishing-add .ghost{padding:4px 9px;font-size:10px}
 .finishing-add{display:flex;gap:8px}
 .finishing-add input{flex:1;border:1px solid rgba(127,127,127,.35);background:rgba(255,255,255,.4);color:inherit;border-radius:9px;padding:8px 10px;font:12px "DM Sans";outline:0;letter-spacing:normal}
+
+/* Publishing */
+.publish-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.publish-grid .home-card{display:grid;gap:10px;align-content:start}
+@media(max-width:900px){.publish-grid{grid-template-columns:1fr}}

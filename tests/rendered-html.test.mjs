@@ -42,6 +42,7 @@ test("renders the core navigation, including both vaults", async () => {
     "Projects",
     "Writing Studio",
     "AI Studio",
+    "Publishing",
   ]) {
     assert.match(html, new RegExp(view.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `missing nav view: ${view}`);
   }
