@@ -53,3 +53,19 @@
 .theme-midnight-gold .next-step-card,.theme-violet-gold .next-step-card,.theme-blue-gold .next-step-card{background:rgba(223,189,103,.08)}
 .next-step-card h3{margin:4px 0 6px;font-size:21px}
 .next-step-card p{margin:0;font-size:13px;opacity:.8;max-width:560px;line-height:1.55}
+
+/* Projects */
+.project-create-row{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:12px}
+.project-list{display:grid;gap:14px;margin-top:16px}
+.project-card{border:1px solid rgba(127,127,127,.25);border-radius:19px;background:rgba(255,255,255,.5);overflow:hidden}
+.theme-midnight-gold .project-card,.theme-violet-gold .project-card,.theme-blue-gold .project-card{background:rgba(255,255,255,.05)}
+.project-summary{display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:19px 22px;background:transparent;border:0;cursor:pointer;text-align:left;color:inherit}
+.project-summary h3{margin:5px 0 4px;font-size:19px}
+.project-summary p{margin:0;font-size:12px;opacity:.75}
+.project-summary small{white-space:nowrap;opacity:.7;font-size:11px}
+.project-detail{padding:0 22px 22px;display:grid;gap:12px}
+.project-detail label{display:grid;gap:6px;font:10px/1.4 "DM Sans";letter-spacing:.14em}
+.project-detail textarea,.project-detail input{border:1px solid rgba(127,127,127,.35);background:rgba(255,255,255,.4);color:inherit;border-radius:10px;padding:11px 13px;font:13px/1.55 "DM Sans";outline:0;letter-spacing:normal}
+.project-detail textarea{min-height:84px;resize:vertical}
+.project-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:900px){.project-detail-grid{grid-template-columns:1fr}}
