@@ -91,6 +91,12 @@ whenever a system changes tier.
   audio playback of a pasted licensed stream works.
 - **Settings / Creator Compass** — theme, season, wisdom mode persist to the
   profile.
+- **Publishing foundation** (2026-07-22) — `app/publishing.tsx` +
+  `lib/epub.ts` + `supabase/dreamboard-publishing.sql`: real Markdown and
+  EPUB 3 exports built in-browser from the actual manuscript (jszip, lazy),
+  readiness summary fed by the Finishing Engine, versioned export history
+  under the Passport. PDF, public preview pages, and external destinations
+  are explicitly listed as not available — no pretend buttons.
 - **Finishing Engine** (2026-07-22) — inside each project's detail:
   deterministic readiness rules over real data (definition of done, mission,
   chapters complete, words present, remaining-work list empty, no blockers),
@@ -142,8 +148,8 @@ whenever a system changes tier.
   writing documents (Writing Studio still holds one document). Attaching vision/knowledge entries to projects from their
   vault views.
 - Collaboration: shared workspaces, comments, permissions, organizations.
-- Publishing pipeline (book/site/newsletter outputs), Marketplace checkout,
-  creator economy.
+- PDF export, public preview pages, external publishing destinations;
+  Marketplace checkout, creator economy.
 - Passport depth: Creative DNA, skills, reputation, timeline, legacy.
 - Tests beyond the rendered-HTML smoke suite (rewritten 2026-07-22 to test
   the real Dreamboard shell; the stale starter-template test was removed).
