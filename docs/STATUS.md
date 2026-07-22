@@ -68,9 +68,12 @@ whenever a system changes tier.
 - **Bulk Import** — real batched uploads to the `dreamboard-private` storage
   bucket with batch + per-file records (`dreamboard_import_batches`,
   `dreamboard_source_documents`), 3-way concurrency, partial-failure states.
-- **Writing Studio** — draft editor with local persistence, cloud document +
-  version history (`dreamboard_writing_documents`, `dreamboard_document_versions`),
-  Markdown export, restore.
+- **Writing Studio** — extracted to `app/writing-studio.tsx` (2026-07-22):
+  live autosave status, named versions (optional label on save), restore
+  confirmation, side-by-side version compare in Version History, read-only
+  source panel beside the page, focus mode, ⌘S saves a version. Cloud
+  document + version history unchanged (`dreamboard_writing_documents`,
+  `dreamboard_document_versions`), Markdown export preserved.
 - **AI route** (`app/api/ai/route.ts`) — OpenAI-compatible chat proxy; honest
   503 until `AI_BASE_URL`/`AI_API_KEY`/`AI_MODEL` are set. Companion runs are
   logged to `dreamboard_companion_runs` either way.
