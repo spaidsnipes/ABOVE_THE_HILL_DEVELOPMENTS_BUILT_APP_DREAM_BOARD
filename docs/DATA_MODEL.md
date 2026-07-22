@@ -22,6 +22,9 @@ community → import → vision-vault.
 | `dreamboard_import_batches` | import-foundation | Bulk import batch records |
 | `dreamboard_source_documents` | import-foundation (+ import-extraction) | Per-file import records: storage path, extraction status/text/chars/error |
 | `dreamboard_chapters` | book-architect | Real chapter outline: part, title, purpose, notes, status, sort order |
+| `dreamboard_project_members` | collaboration | Members/invitations: role, status, invited_email (RLS via SECURITY DEFINER helpers, ADR-0006) |
+| `dreamboard_project_comments` | collaboration | Project comments + review requests |
+| `dreamboard_project_activity` | collaboration | Per-project activity feed |
 | `dreamboard_exports` | publishing | Versioned export history (format, title, word count) |
 | `dreamboard_audio_narrations` | audiobook | Narration records: storage path, chapter link, pronunciation notes |
 | `dreamboard_vision_entries` | vision-vault | **Vision Vault**: the creator's own ideas/dreams/goals (ADR-0004) |
