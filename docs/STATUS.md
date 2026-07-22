@@ -34,6 +34,15 @@ whenever a system changes tier.
   confirmed_by_user). AI-suggested edges render dashed gold and require
   explicit confirm/reject. Honest fallback when the provenance migration
   hasn't been run. Each Knowledge Vault entry still creates a `source` node.
+- **Creative Companion foundation** (2026-07-22) — `lib/companion.ts` +
+  `app/ai-studio.tsx`: 10 typed skills with behaviors, 6 working modes,
+  deterministic router with stated rationale, pinnable skills, opt-in
+  context assembly (draft/sources toggles = privacy guard), provider
+  abstraction over /api/ai with a labeled local fallback. Output arrives in
+  category-labeled segments (evidence / interpretation / inference /
+  speculation / recommendation / creative suggestion / generated draft).
+  Voice protection: copy or append-to-end-with-confirmation only — never
+  replaces text. Runs logged with provenance to dreamboard_companion_runs.
 - **Google Drive import (foundation)** (2026-07-22) — read-only OAuth
   connector fully built: `app/api/drive/*` (consent, callback with state
   check, file list, file/Google-Doc export download; session token in an
@@ -93,8 +102,6 @@ whenever a system changes tier.
 
 - **"Organize my notes"** — relabels "Unsorted" tags to "Emerging thread";
   no real clustering or AI organization.
-- **Local Companion** — regex keyword routing to skill/persona names with
-  templated output. The 30 skills / 30 personas are lists, not behaviors.
 - **Reader** — renders the current draft only; fine as a preview.
 - **Audiobook Studio** — session-only object-URL playback; no cloud storage.
 - **Shop cart** — local cart math only; no checkout/payments (disclosed).

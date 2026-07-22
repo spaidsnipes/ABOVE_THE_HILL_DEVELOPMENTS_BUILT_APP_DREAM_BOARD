@@ -112,3 +112,15 @@
 .drive-file:hover{background:rgba(127,127,127,.08)}
 .drive-file b{font-size:13px}
 .drive-file small{display:block;opacity:.65;font-size:11px}
+
+/* Companion labeled output */
+.companion-skills-row{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+.companion-context-row{display:flex;flex-wrap:wrap;gap:18px;margin:4px 0 12px}
+.segment-list{display:grid;gap:10px;margin:8px 0}
+.segment{border-left:3px solid rgba(127,127,127,.35);padding:2px 0 2px 12px}
+.segment b{display:block;font:10px "DM Sans";letter-spacing:.14em;text-transform:uppercase;opacity:.65;margin-bottom:3px}
+.segment p{margin:0;font-size:13px;line-height:1.6;white-space:pre-wrap}
+.segment-evidence{border-color:#1f806d}
+.segment-recommendation{border-color:#a57628}
+.segment-creative_suggestion,.segment-generated_draft{border-color:#dcb86b;background:rgba(223,189,103,.07);border-radius:0 9px 9px 0}
+.segment-speculation,.segment-inference{border-color:#8a2d55}
