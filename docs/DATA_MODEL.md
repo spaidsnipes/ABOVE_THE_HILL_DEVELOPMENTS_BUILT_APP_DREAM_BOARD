@@ -1,0 +1,32 @@
+# Dreamboard Data Model
+
+Source of truth: the SQL files in `supabase/`. All tables are RLS-protected,
+private to their `owner_id` unless noted. Run order: core → workspace →
+community → import → vision-vault.
+
+| Table | Script | Purpose |
+| --- | --- | --- |
+| `wm_id` | wm-id-schema.sql | Legacy Passport handle (user_id → handle), shared with WOW World |
+| `dreamboard_profiles` | core | Passport profile: display name, wisdom mode, season, theme |
+| `dreamboard_projects` | core | Project containers (schema present; UI pending) |
+| `dreamboard_timeline_events` | core | Timeline events (schema present; UI pending) |
+| `dreamboard_lounge_posts` | core | Shared Lounge posts (community-readable) |
+| `dreamboard_shop_products` | core | Shared shop catalog |
+| `dreamboard_radio_stations` | core | Shared radio stations |
+| `dreamboard_vault_entries` | creator-workspace | **Knowledge Vault**: external/source material |
+| `dreamboard_graph_nodes` | creator-workspace | Creative Graph nodes (source/theme/…) |
+| `dreamboard_graph_edges` | creator-workspace | Creative Graph relationships |
+| `dreamboard_companion_runs` | creator-workspace | AI Companion request history + provenance |
+| `dreamboard_writing_documents` | creator-workspace | Writing Studio documents |
+| `dreamboard_document_versions` | creator-workspace | Writing Studio version history |
+| `dreamboard_import_batches` | import-foundation | Bulk import batch records |
+| `dreamboard_source_documents` | import-foundation | Per-file import records (storage paths) |
+| `dreamboard_vision_entries` | vision-vault | **Vision Vault**: the creator's own ideas/dreams/goals (ADR-0004) |
+
+Storage buckets: `dreamboard-private` (import originals, path
+`{owner_id}/{batch_id}/{n}-{name}`).
+
+Local-fallback keys (browser localStorage): `dreamboard-notes-v2`,
+`dreamboard-draft-v2`, `dreamboard-lounge`, `dreamboard-cart`,
+`dreamboard-radio-stream`, `dreamboard-snapshots`,
+`dreamboard-vision-entries`.

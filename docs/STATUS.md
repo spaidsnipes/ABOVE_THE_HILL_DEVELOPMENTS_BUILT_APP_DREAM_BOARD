@@ -6,6 +6,15 @@ whenever a system changes tier.
 
 ## Working (real, wired to Supabase when connected)
 
+- **Vision Vault** (2026-07-22) — distinct from Knowledge Vault (ADR-0004):
+  own table `dreamboard_vision_entries` with idea lifecycle (inbox →
+  developing/incubating → ready_for_project → archived), capture types,
+  owner RLS; full CRUD with archive/restore, delete-with-confirm, search and
+  status filters; quick capture from Creator Home; localStorage fallback with
+  explicit "Secure to cloud" promotion; honest setup notice when the table
+  isn't provisioned yet. View lives in `app/vision-vault.tsx` (first
+  extraction from page.tsx).
+
 - **Passport** — magic-link sign-in, handle claim (`wm_id` table), profile
   (display name, wisdom mode, creator season, theme) in `dreamboard_profiles`.
   UX fully says "Passport"; internals still use WM naming.
@@ -50,8 +59,8 @@ whenever a system changes tier.
 
 ## Missing (in the vision, not yet started)
 
-- Vision Vault as distinct from Knowledge Vault (private ideas/dreams vs.
-  external sources) — today one vault serves both.
+- Voice/image/file/link capture types for Vision Vault (model supports them;
+  UI captures text only so far). Vision entries don't create graph nodes yet.
 - Text extraction, indexing, and search over imported files (imports are
   preserved originals only).
 - Google Drive import.
@@ -62,7 +71,8 @@ whenever a system changes tier.
 - Publishing pipeline (book/site/newsletter outputs), Marketplace checkout,
   creator economy.
 - Passport depth: Creative DNA, skills, reputation, timeline, legacy.
-- Tests beyond the single rendered-HTML smoke test.
+- Tests beyond the rendered-HTML smoke suite (rewritten 2026-07-22 to test
+  the real Dreamboard shell; the stale starter-template test was removed).
 
 ## Structural debt
 
