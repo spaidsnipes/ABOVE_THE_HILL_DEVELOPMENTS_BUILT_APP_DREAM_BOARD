@@ -43,6 +43,11 @@ whenever a system changes tier.
   audio playback of a pasted licensed stream works.
 - **Settings / Creator Compass** — theme, season, wisdom mode persist to the
   profile.
+- **Creator Home** (2026-07-22) — extracted to `app/creator-home.tsx`; shows
+  real data only: recent Vision Vault captures, Knowledge Vault sources,
+  recent versions, imports needing retry, and a deterministic, explained
+  "next meaningful step" (imports needing action → inbox ideas → active
+  draft → unorganized sources → first capture). No fabricated insights.
 
 ## Placeholder / partial (UI exists, substance thin)
 
@@ -56,7 +61,7 @@ whenever a system changes tier.
 - **Audiobook Studio** — session-only object-URL playback; no cloud storage.
 - **Shop cart** — local cart math only; no checkout/payments (disclosed).
 - **Projects / Creative Timeline / Creation Journal** — thin views over the
-  single writing document and local notes. `dreamboard_projects` and
+  single writing document and local notes. (Creator Home now real.) `dreamboard_projects` and
   `dreamboard_timeline_events` tables exist but the UI doesn't use them.
 - **ChatGPT workspace auth** (`app/chatgpt-auth.ts`) — starter-template
   leftover; unused by the app.
