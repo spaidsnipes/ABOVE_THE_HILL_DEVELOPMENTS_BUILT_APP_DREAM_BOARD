@@ -34,6 +34,14 @@ whenever a system changes tier.
   confirmed_by_user). AI-suggested edges render dashed gold and require
   explicit confirm/reject. Honest fallback when the provenance migration
   hasn't been run. Each Knowledge Vault entry still creates a `source` node.
+- **Import text extraction** (2026-07-22) — `app/import-pipeline.tsx` +
+  `supabase/dreamboard-import-extraction.sql` (ADR-0005): browser-side
+  pipeline extracts txt/md/docx from preserved originals, tracks per-file
+  states (uploaded → processing → processed / failed / unsupported) with
+  specific reasons, supports retry, dedupes via a unique source-document
+  index, and lands extracted text as Knowledge Vault entries (searchable via
+  Universal Search) plus graph source nodes. PDFs/images/audio honestly
+  marked unsupported until their extractors ship.
 - **Bulk Import** — real batched uploads to the `dreamboard-private` storage
   bucket with batch + per-file records (`dreamboard_import_batches`,
   `dreamboard_source_documents`), 3-way concurrency, partial-failure states.
@@ -93,8 +101,7 @@ whenever a system changes tier.
 
 - Voice/image/file/link capture types for Vision Vault (model supports them;
   UI captures text only so far). Vision entries don't create graph nodes yet.
-- Text extraction, indexing, and search over imported files (imports are
-  preserved originals only).
+- PDF text extraction and image OCR for imports (txt/md/docx now supported).
 - Google Drive import.
 - Embeddings / semantic graph links; real graph exploration UI.
 - Project tasks, milestones, collaborators. Linking chapters to specific

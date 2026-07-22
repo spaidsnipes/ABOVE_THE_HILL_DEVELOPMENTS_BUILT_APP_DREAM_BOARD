@@ -13,14 +13,14 @@ community → import → vision-vault.
 | `dreamboard_lounge_posts` | core | Shared Lounge posts (community-readable) |
 | `dreamboard_shop_products` | core | Shared shop catalog |
 | `dreamboard_radio_stations` | core | Shared radio stations |
-| `dreamboard_vault_entries` | creator-workspace | **Knowledge Vault**: external/source material |
+| `dreamboard_vault_entries` | creator-workspace | **Knowledge Vault**: external/source material; `source_document_id` links processed imports |
 | `dreamboard_graph_nodes` | creator-workspace | Creative Graph nodes (source/theme/…) |
 | `dreamboard_graph_edges` | creator-workspace (+ graph-provenance) | Creative Graph relationships with provenance (origin/confidence/evidence/confirmed_by_user) |
 | `dreamboard_companion_runs` | creator-workspace | AI Companion request history + provenance |
 | `dreamboard_writing_documents` | creator-workspace | Writing Studio documents |
 | `dreamboard_document_versions` | creator-workspace | Writing Studio version history |
 | `dreamboard_import_batches` | import-foundation | Bulk import batch records |
-| `dreamboard_source_documents` | import-foundation | Per-file import records (storage paths) |
+| `dreamboard_source_documents` | import-foundation (+ import-extraction) | Per-file import records: storage path, extraction status/text/chars/error |
 | `dreamboard_chapters` | book-architect | Real chapter outline: part, title, purpose, notes, status, sort order |
 | `dreamboard_vision_entries` | vision-vault | **Vision Vault**: the creator's own ideas/dreams/goals (ADR-0004) |
 
