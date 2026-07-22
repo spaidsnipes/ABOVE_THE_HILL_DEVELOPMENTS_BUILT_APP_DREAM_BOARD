@@ -34,6 +34,12 @@ whenever a system changes tier.
   confirmed_by_user). AI-suggested edges render dashed gold and require
   explicit confirm/reject. Honest fallback when the provenance migration
   hasn't been run. Each Knowledge Vault entry still creates a `source` node.
+- **Organize My Notes** (2026-07-22) — `lib/organize.ts` + `app/organize.tsx`:
+  deterministic word-recurrence clustering (labeled in-app as "no AI ran"),
+  possible-duplicate detection, open-question surfacing, and a review screen
+  where the creator approves theme groups before anything is applied.
+  Approved themes are added alongside original tags (never replacing them)
+  and synced to cloud vault entries where possible.
 - **Creative Companion foundation** (2026-07-22) — `lib/companion.ts` +
   `app/ai-studio.tsx`: 10 typed skills with behaviors, 6 working modes,
   deterministic router with stated rationale, pinnable skills, opt-in
@@ -100,8 +106,6 @@ whenever a system changes tier.
 
 ## Placeholder / partial (UI exists, substance thin)
 
-- **"Organize my notes"** — relabels "Unsorted" tags to "Emerging thread";
-  no real clustering or AI organization.
 - **Reader** — renders the current draft only; fine as a preview.
 - **Audiobook Studio** — session-only object-URL playback; no cloud storage.
 - **Shop cart** — local cart math only; no checkout/payments (disclosed).

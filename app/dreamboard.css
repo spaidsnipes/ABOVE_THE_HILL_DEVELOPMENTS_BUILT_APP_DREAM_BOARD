@@ -124,3 +124,13 @@
 .segment-recommendation{border-color:#a57628}
 .segment-creative_suggestion,.segment-generated_draft{border-color:#dcb86b;background:rgba(223,189,103,.07);border-radius:0 9px 9px 0}
 .segment-speculation,.segment-inference{border-color:#8a2d55}
+
+/* Organize My Notes review */
+.organize-review{border:1px solid rgba(180,137,59,.32);border-radius:19px;padding:20px 22px;margin:0 0 16px;display:grid;gap:12px;background:rgba(255,249,233,.55)}
+.theme-midnight-gold .organize-review,.theme-violet-gold .organize-review,.theme-blue-gold .organize-review{background:rgba(223,189,103,.07)}
+.organize-clusters{display:grid;gap:9px}
+.organize-cluster{display:flex;align-items:flex-start;gap:11px;padding:10px 12px;border:1px solid rgba(127,127,127,.22);border-radius:12px;cursor:pointer}
+.organize-cluster b{font-size:14px}
+.organize-cluster small{display:block;opacity:.7;font-size:11px;line-height:1.5;margin-top:2px}
+.organize-extra{display:grid;gap:6px}
+.organize-extra p{margin:0;font-size:12px;opacity:.75;line-height:1.55}

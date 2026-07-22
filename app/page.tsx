@@ -14,8 +14,9 @@ import { SearchView } from "./search";
 import { ImportProcessingPanel, useImportPipeline } from "./import-pipeline";
 import { DriveImportPanel } from "./drive-import";
 import { AIStudioView, type CompanionRun } from "./ai-studio";
+import { OrganizeReview } from "./organize";
 
-type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[] };
+type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[]; cloudId?: string };
 type LoungePost = { id: string | number; author: string; body: string; topic: string; time: string; likes: number };
 type Snapshot = { id: number; label: string; body: string; chapter: number; date: string; words: number };
 type ActiveView = "Creator’s Home" | "Search" | "Creator Compass" | "Projects" | "Bulk Import" | "Vision Vault" | "Knowledge Vault" | "Creative Graph" | "Book Architect" | "Writing Studio" | "Creative Timeline" | "Creation Journal" | "Version History" | "Reader" | "Audiobook Studio" | "AI Studio" | "Passport" | "Lounge" | "Shop" | "Radio" | "Settings";
@@ -64,6 +65,7 @@ export default function Dreamboard() {
   const [chapter, setChapter] = useState(0);
   const [journal, setJournal] = useState("");
   const [organized, setOrganized] = useState(false);
+  const [organizeOpen, setOrganizeOpen] = useState(false);
   const [notice, setNotice] = useState("Dreamboard is ready for your next real piece of work.");
   const [hydrated, setHydrated] = useState(false);
   const [loungeText, setLoungeText] = useState("");
@@ -131,7 +133,7 @@ export default function Dreamboard() {
       ]);
       if (vaultResult.data) {
         const remoteVault = vaultResult.data as VaultEntry[];
-        if (remoteVault.length) setNotes(remoteVault.map((entry, index) => ({ id: index + 1, title: entry.title, body: entry.content, kind: entry.source_type, date: new Date(entry.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), tags: entry.tags || [] })));
+        if (remoteVault.length) setNotes(remoteVault.map((entry, index) => ({ id: index + 1, cloudId: entry.id, title: entry.title, body: entry.content, kind: entry.source_type, date: new Date(entry.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), tags: entry.tags || [] })));
       }
       if (companionResult.data) setCompanionRuns(companionResult.data as CompanionRun[]);
       if (documentsResult.data?.[0]) { const document = documentsResult.data[0] as WritingDocument; setWritingDocument(document); setDraft(document.body); setChapter(Math.max(0, document.chapter_number - 1)); }
@@ -202,6 +204,7 @@ export default function Dreamboard() {
       const { data: entry, error } = await supabase.from("dreamboard_vault_entries").insert({ owner_id: passportUser.id, title, content: clean, source_type: sourceType, tags: ["Unsorted"] }).select("id,title,content,source_type,status,tags,created_at,updated_at").single();
       if (error || !entry) { setNotice("This note remains safely on this device. Dreamboard could not save its cloud copy yet."); return; }
       const saved = entry as VaultEntry;
+      setNotes(previous => previous.map(note => note.id === localNote.id ? { ...note, cloudId: saved.id } : note));
       await supabase.from("dreamboard_graph_nodes").insert({ owner_id: passportUser.id, vault_entry_id: saved.id, node_type: "source", label: saved.title, description: saved.content.slice(0, 360) });
       setNotice("Saved to your private Knowledge Vault and added to your Creative Graph.");
     })();
@@ -251,7 +254,30 @@ export default function Dreamboard() {
   const restoreSnapshot = (snapshot: Snapshot) => { setDraft(snapshot.body); setChapter(snapshot.chapter); setNotice(`Restored ${snapshot.label}. Your other saved versions are still available.`); setActive("Writing Studio"); };
   const handleNarrationFile = (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setNarrationName(file.name); setNarrationUrl(URL.createObjectURL(file)); setNotice(`${file.name} is loaded into the Audiobook Studio for this browser session.`); };
   const saveJournal = () => { if (!journal.trim()) return; addNote(journal, "Journal"); setJournal(""); setNotice("Your journal entry was added to the vault as source material."); };
-  const organize = () => { setOrganized(true); setNotes(prev => prev.map(note => note.tags.includes("Unsorted") ? { ...note, tags: ["Emerging thread"] } : note)); setNotice("Themes are ready to review. You remain in control of every assignment."); };
+  const organize = () => { setOrganizeOpen(true); setActive("Knowledge Vault"); setNotice("Review the proposed themes below. Nothing changes until you approve it."); };
+  const applyOrganize = (assignments: Array<{ id: number; theme: string }>) => {
+    if (!assignments.length) { setOrganizeOpen(false); return; }
+    const byId = new Map(assignments.map(item => [item.id, item.theme]));
+    const cloudUpdates: Array<{ cloudId: string; tags: string[] }> = [];
+    setNotes(previous => previous.map(note => {
+      const theme = byId.get(note.id);
+      if (!theme) return note;
+      const tags = [...new Set([...note.tags.filter(tag => tag !== "Unsorted"), theme])];
+      if (note.cloudId) cloudUpdates.push({ cloudId: note.cloudId, tags });
+      return { ...note, tags };
+    }));
+    setOrganized(true);
+    setOrganizeOpen(false);
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && passportUser && cloudUpdates.length) {
+      void Promise.all(cloudUpdates.map(update => supabase.from("dreamboard_vault_entries").update({ tags: update.tags }).eq("id", update.cloudId))).then(results => {
+        const failed = results.filter(result => result.error).length;
+        setNotice(failed ? `${assignments.length} notes themed; ${failed} cloud updates failed and will show old tags after reload.` : `${assignments.length} notes themed — approved by you, synced to your cloud vault.`);
+      });
+    } else {
+      setNotice(`${assignments.length} note${assignments.length === 1 ? "" : "s"} themed on this device — approved by you, nothing invented.`);
+    }
+  };
   const postToLounge = async () => { const body = loungeText.trim(); if (!body) return; const supabase = getSupabaseBrowserClient(); if (!supabase || !passportUser || !passportHandle) { setNotice("Set up your Passport before publishing to the shared Lounge."); setActive("Passport"); return; } const { data, error } = await supabase.from("dreamboard_lounge_posts").insert({ author_id: passportUser.id, author_label: displayName || `@${passportHandle}`, body, topic: "From Dreamboard" }).select("id, author_label, body, topic, created_at").single(); if (error || !data) { setNotice("Dreamboard could not publish that post. Please try again after confirming your Passport."); return; } setPosts(prev => [toLoungePost(data as CommunityPostRow), ...prev]); setLoungeText(""); setNotice("Your update is now shared in WOW World Lounge."); };
   const addToCart = (itemId: string) => { setCart(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 })); setNotice("Added to the Shop cart. Payments will be connected only when you choose your checkout provider."); };
   const toggleRadio = async () => {
@@ -304,7 +330,7 @@ export default function Dreamboard() {
       {active === "Search" && <SearchView user={passportUser} onGo={setActive} />}
       {active === "Vision Vault" && <VisionVaultView vault={visionVault} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} />}
       {active === "Bulk Import" && <><BulkImport importText={importText} setImportText={setImportText} onAddText={importNotes} singleInput={fileInput} onSingleFile={handleFile} bulkInput={bulkFileInput} onFiles={chooseImportFiles} files={importFiles} label={importLabel} setLabel={setImportLabel} importing={importing} progress={importProgress} batches={importBatches} signedIn={Boolean(passportUser)} onStart={() => void uploadImportBatch()} onPassport={() => setActive("Passport")} /><DriveImportPanel user={passportUser} notify={setNotice} onImported={() => { const supabase = getSupabaseBrowserClient(); if (supabase) void supabase.from("dreamboard_import_batches").select("id, label, status, file_count, uploaded_count, failed_count, total_bytes, created_at").order("created_at", { ascending: false }).limit(8).then(({ data }) => { if (data) setImportBatches(data as ImportBatch[]); }); }} /><ImportProcessingPanel pipeline={importPipeline} batches={importBatches} signedIn={Boolean(passportUser)} /></>}
-      {active === "Knowledge Vault" && <section className="view"><div className="view-heading split"><div><span className="eyebrow">YOUR SOURCE LIBRARY</span><h2>Knowledge Vault</h2><p>{notes.length} pieces of material, all still yours.</p></div><button className="gold" onClick={organize}>✦ Organize my notes</button></div><label className="searchbox">⌕<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search your stories, research, reflections, and journal entries" /></label><div className="vault-list">{filtered.map(note => <article key={note.id}><div className="vault-icon">{note.kind === "Research" ? "⌘" : "✦"}</div><div><span>{note.kind} · {note.date}</span><h3>{note.title}</h3><p>{note.body}</p></div><div className="tag-stack">{note.tags.map(tag => <b key={tag}>{tag}</b>)}</div></article>)}{!filtered.length && <p className="empty-state">Nothing matched that search. Your original material remains safe in the vault.</p>}</div></section>}
+      {active === "Knowledge Vault" && <section className="view"><div className="view-heading split"><div><span className="eyebrow">YOUR SOURCE LIBRARY</span><h2>Knowledge Vault</h2><p>{notes.length} pieces of material, all still yours.</p></div><button className="gold" onClick={organize}>✦ Organize my notes</button></div>{organizeOpen && <OrganizeReview notes={notes} onApply={applyOrganize} onClose={() => setOrganizeOpen(false)} />}<label className="searchbox">⌕<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search your stories, research, reflections, and journal entries" /></label><div className="vault-list">{filtered.map(note => <article key={note.id}><div className="vault-icon">{note.kind === "Research" ? "⌘" : "✦"}</div><div><span>{note.kind} · {note.date}</span><h3>{note.title}</h3><p>{note.body}</p></div><div className="tag-stack">{note.tags.map(tag => <b key={tag}>{tag}</b>)}</div></article>)}{!filtered.length && <p className="empty-state">Nothing matched that search. Your original material remains safe in the vault.</p>}</div></section>}
       {active === "Creative Graph" && <CreativeGraphView graph={creativeGraph} signedIn={Boolean(passportUser)} onOpenSource={() => setActive("Knowledge Vault")} onVault={() => setActive("Knowledge Vault")} onPassport={() => setActive("Passport")} />}
       {active === "Book Architect" && <BookArchitectView state={bookChapters} activeIndex={Math.min(chapter, Math.max(0, bookChapters.chapters.length - 1))} onSelect={setChapter} sourceTitles={notes.map(note => note.title)} onWrite={() => setActive("Writing Studio")} onVault={() => setActive("Knowledge Vault")} />}
       {active === "Writing Studio" && <section className="view writing-view"><div className="writing-toolbar"><div><span className="eyebrow">{writingDocument?.title || "UNTITLED PROJECT"} / CHAPTER {chapter + 1}</span><h2>{chapterTitle}</h2></div><div><span className="draft-status">● Saved on this device</span><button className="ghost" onClick={saveSnapshot}>Save version</button><button className="ghost" onClick={exportDraft}>Export Markdown</button></div></div><textarea className="writer" value={draft} onChange={e => setDraft(e.target.value)} aria-label="Manuscript editor" placeholder="Start with the words you have. Dreamboard will help you protect, organize, and develop them." /><footer className="writer-footer"><span>{wordCount.toLocaleString()} words in this chapter</span><button className="text-button" onClick={() => setActive("AI Studio")}>Ask Dreamboard AI →</button></footer></section>}
