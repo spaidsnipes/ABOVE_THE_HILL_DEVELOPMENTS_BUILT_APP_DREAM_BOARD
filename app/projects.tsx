@@ -7,7 +7,7 @@ import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 export const PROJECT_TYPES = ["book", "memoir", "research", "script", "comic", "podcast", "music", "application", "website", "game", "business", "course", "nonprofit", "custom"] as const;
 export const PROJECT_STATUSES = ["idea", "incubating", "planning", "active", "paused", "blocked", "review", "ready_to_publish", "published", "completed", "archived"] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
-export type Project = { id: string; title: string; kind: string; description: string; status: ProjectStatus; mission: string; intended_outcome: string; completion_definition: string; metadata: { next_action?: string }; created_at: string; updated_at: string; archived_at: string | null };
+export type Project = { id: string; title: string; kind: string; description: string; status: ProjectStatus; mission: string; intended_outcome: string; completion_definition: string; metadata: { next_action?: string; remaining_work?: string[]; blockers?: string[]; deferred_ideas?: string[]; version_target?: string }; created_at: string; updated_at: string; archived_at: string | null };
 
 const FULL_COLUMNS = "id,title,kind,description,status,mission,intended_outcome,completion_definition,metadata,created_at,updated_at,archived_at";
 const BASE_COLUMNS = "id,title,kind,created_at,updated_at";
@@ -112,7 +112,7 @@ export function useProjects(user: User | null, notify: (message: string) => void
   return { projects, loadState, extended, createProject, updateProject, deleteProject, attachedCounts, attachCurrentDocument };
 }
 
-function ProjectEditor({ project, state, hasDocument, onWrite }: { project: Project; state: ProjectsState; hasDocument: boolean; onWrite: () => void }) {
+function ProjectEditor({ project, state, hasDocument, onWrite, chaptersComplete, chaptersTotal, wordCount }: { project: Project; state: ProjectsState; hasDocument: boolean; onWrite: () => void; chaptersComplete: number; chaptersTotal: number; wordCount: number }) {
   const [description, setDescription] = useState(project.description);
   const [mission, setMission] = useState(project.mission);
   const [outcome, setOutcome] = useState(project.intended_outcome);
@@ -137,10 +137,53 @@ function ProjectEditor({ project, state, hasDocument, onWrite }: { project: Proj
         ? <><button className="ghost" onClick={() => void state.updateProject(project.id, { status: "active" })}>Restore</button><button className="ghost" onClick={() => { if (window.confirm(`Permanently delete “${project.title}”? Attached material is kept but detached. This cannot be undone.`)) void state.deleteProject(project.id); }}>Delete</button></>
         : <button className="ghost" onClick={() => void state.updateProject(project.id, { status: "archived" })}>Archive</button>}
     </div>
+    <FinishingPanel project={project} state={state} chaptersComplete={chaptersComplete} chaptersTotal={chaptersTotal} wordCount={wordCount} />
   </>;
 }
 
-export function ProjectsView({ state, signedIn, hasDocument, onPassport, onWrite }: { state: ProjectsState; signedIn: boolean; hasDocument: boolean; onPassport: () => void; onWrite: () => void }) {
+function ListEditor({ label, items, onChange, placeholder }: { label: string; items: string[]; onChange: (items: string[]) => void; placeholder: string }) {
+  const [draft, setDraft] = useState("");
+  return <div className="finishing-list"><span className="eyebrow">{label}</span>
+    {items.map((item, index) => <div key={`${item}-${index}`} className="finishing-item"><p>{item}</p><button className="ghost" onClick={() => onChange(items.filter((_, i) => i !== index))} aria-label={`Remove ${item}`}>✕</button></div>)}
+    <div className="finishing-add"><input value={draft} onChange={event => setDraft(event.target.value)} placeholder={placeholder} onKeyDown={event => { if (event.key === "Enter" && draft.trim()) { onChange([...items, draft.trim()]); setDraft(""); } }} /><button className="ghost" onClick={() => { if (draft.trim()) { onChange([...items, draft.trim()]); setDraft(""); } }} disabled={!draft.trim()}>Add</button></div>
+  </div>;
+}
+
+// Finishing Engine: transparent, deterministic readiness rules over real
+// project data. No AI judgment, no fake progress.
+function FinishingPanel({ project, state, chaptersComplete, chaptersTotal, wordCount }: { project: Project; state: ProjectsState; chaptersComplete: number; chaptersTotal: number; wordCount: number }) {
+  const meta = project.metadata;
+  const remaining = meta.remaining_work || [];
+  const blockers = meta.blockers || [];
+  const deferred = meta.deferred_ideas || [];
+  const saveMeta = (patch: Partial<Project["metadata"]>) => void state.updateProject(project.id, { metadata: { ...meta, ...patch } });
+  const checks: Array<[boolean, string]> = [
+    [Boolean(project.completion_definition.trim()), "Definition of done is written"],
+    [Boolean(project.mission.trim()), "Mission is stated"],
+    [chaptersTotal === 0 || chaptersComplete === chaptersTotal, chaptersTotal ? `Chapters complete (${chaptersComplete}/${chaptersTotal})` : "Chapters complete (no outline yet — add chapters in Book Architect)"],
+    [wordCount > 0, "The manuscript has words in it"],
+    [remaining.length === 0, remaining.length ? `Remaining required work is empty (${remaining.length} item${remaining.length === 1 ? "" : "s"} left)` : "Remaining required work is empty"],
+    [blockers.length === 0, blockers.length ? `No blockers (${blockers.length} open)` : "No blockers"],
+  ];
+  const ready = checks.every(([passed]) => passed);
+  const isCandidate = project.status === "review" || project.status === "ready_to_publish";
+  return <div className="finishing-panel">
+    <span className="eyebrow">FINISHING ENGINE · TRANSPARENT RULES, NO AI JUDGMENT</span>
+    <div className="finishing-checks">{checks.map(([passed, label]) => <p key={label} className={passed ? "check passed" : "check"}><i>{passed ? "✓" : "○"}</i>{label}</p>)}</div>
+    <div className="project-detail-grid">
+      <ListEditor label="REMAINING REQUIRED WORK" items={remaining} onChange={items => saveMeta({ remaining_work: items })} placeholder="What must exist before this is done" />
+      <ListEditor label="BLOCKERS" items={blockers} onChange={items => saveMeta({ blockers: items })} placeholder="What is genuinely in the way" />
+      <ListEditor label="DEFERRED IDEAS (NOT REQUIRED)" items={deferred} onChange={items => saveMeta({ deferred_ideas: items })} placeholder="Good ideas that can wait for the next version" />
+      <label>VERSION TARGET<input value={meta.version_target || ""} onChange={event => saveMeta({ version_target: event.target.value })} placeholder="e.g. First edition, v1.0" /></label>
+    </div>
+    <div className="vision-actions">
+      <button className="gold" onClick={() => { if (window.confirm(`Mark “${project.title}” as ready to publish? Every readiness rule has passed — you can still move it back at any time.`)) void state.updateProject(project.id, { status: "ready_to_publish" }); }} disabled={!ready || isCandidate}>{isCandidate ? "Already in release review" : ready ? "Mark ready to publish" : "Readiness rules not yet met"}</button>
+      {!ready && <span className="import-truth">The button unlocks when every rule above passes — Dreamboard never fakes completion.</span>}
+    </div>
+  </div>;
+}
+
+export function ProjectsView({ state, signedIn, hasDocument, onPassport, onWrite, chaptersComplete, chaptersTotal, wordCount }: { state: ProjectsState; signedIn: boolean; hasDocument: boolean; onPassport: () => void; onWrite: () => void; chaptersComplete: number; chaptersTotal: number; wordCount: number }) {
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState("book");
   const [showArchived, setShowArchived] = useState(false);
@@ -159,7 +202,7 @@ export function ProjectsView({ state, signedIn, hasDocument, onPassport, onWrite
       {visible.map(project => { const counts = state.attachedCounts[project.id] || { vision: 0, knowledge: 0, documents: 0 }; const isOpen = openId === project.id; return <article key={project.id} className={isOpen ? "project-card open" : "project-card"}>
         <button className="project-summary" onClick={() => setOpenId(isOpen ? null : project.id)} aria-expanded={isOpen}><div><span className="eyebrow">{project.kind.toUpperCase()} · {project.status.replace(/_/g, " ").toUpperCase()}</span><h3>{project.title}</h3>{project.description && !isOpen && <p>{project.description.slice(0, 140)}</p>}</div><small>{counts.documents} doc{counts.documents === 1 ? "" : "s"} · {counts.vision} idea{counts.vision === 1 ? "" : "s"} · {counts.knowledge} source{counts.knowledge === 1 ? "" : "s"}</small></button>
         {isOpen && <div className="project-detail">
-          {state.extended ? <ProjectEditor key={project.id} project={project} state={state} hasDocument={hasDocument} onWrite={onWrite} /> : <p className="empty-state">Run the project-model migration to edit mission, status, and completion definition here.</p>}
+          {state.extended ? <ProjectEditor key={project.id} project={project} state={state} hasDocument={hasDocument} onWrite={onWrite} chaptersComplete={chaptersComplete} chaptersTotal={chaptersTotal} wordCount={wordCount} /> : <p className="empty-state">Run the project-model migration to edit mission, status, and completion definition here.</p>}
         </div>}
       </article>; })}
       {!visible.length && <p className="empty-state">{showArchived ? "No archived projects." : "No projects yet. Dreamboard begins empty on purpose — create the first container for your real work above."}</p>}

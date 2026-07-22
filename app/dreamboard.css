@@ -162,3 +162,17 @@
 .narration-list small{display:block;opacity:.65;font-size:11px;margin:2px 0 7px}
 .narration-list textarea{width:100%;min-height:52px;resize:vertical;border:1px solid rgba(127,127,127,.3);background:rgba(255,255,255,.35);color:inherit;border-radius:9px;padding:8px 10px;font:12px/1.5 "DM Sans";outline:0}
 @media print{.rail,header,.notice,.reader-toolbar,.reader-progress{display:none!important}.reader-page{max-height:none;overflow:visible;box-shadow:none}}
+
+/* Finishing Engine */
+.finishing-panel{border-top:1px solid rgba(127,127,127,.2);padding-top:14px;display:grid;gap:12px}
+.finishing-checks{display:grid;gap:5px}
+.finishing-checks .check{margin:0;font-size:12px;opacity:.6;display:flex;gap:8px;align-items:center}
+.finishing-checks .check.passed{opacity:.95}
+.finishing-checks .check i{font-style:normal;width:16px;color:#a57628}
+.finishing-checks .check.passed i{color:#1f806d}
+.finishing-list{display:grid;gap:6px;font:10px/1.4 "DM Sans";letter-spacing:.14em}
+.finishing-item{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.finishing-item p{margin:0;font:12px/1.4 "DM Sans";letter-spacing:normal}
+.finishing-item .ghost,.finishing-add .ghost{padding:4px 9px;font-size:10px}
+.finishing-add{display:flex;gap:8px}
+.finishing-add input{flex:1;border:1px solid rgba(127,127,127,.35);background:rgba(255,255,255,.4);color:inherit;border-radius:9px;padding:8px 10px;font:12px "DM Sans";outline:0;letter-spacing:normal}
