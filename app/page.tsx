@@ -11,6 +11,7 @@ import { PassportView } from "./passport";
 import { ProjectsView, useProjects } from "./projects";
 import { BookArchitectView, useChapters } from "./book-architect";
 import { SearchView } from "./search";
+import { ImportProcessingPanel, useImportPipeline } from "./import-pipeline";
 
 type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[] };
 type LoungePost = { id: string | number; author: string; body: string; topic: string; time: string; likes: number };
@@ -94,6 +95,7 @@ export default function Dreamboard() {
   const creativeGraph = useCreativeGraph(passportUser, setNotice);
   const projects = useProjects(passportUser, setNotice, writingDocument?.id || null);
   const bookChapters = useChapters(passportUser, setNotice);
+  const importPipeline = useImportPipeline(passportUser, setNotice);
   const chapterTitles = bookChapters.chapters.length ? bookChapters.chapters.map(item => item.title) : ["Untitled chapter"];
   const chapterTitle = chapterTitles[Math.min(chapter, chapterTitles.length - 1)];
   const fileInput = useRef<HTMLInputElement>(null);
@@ -332,7 +334,7 @@ export default function Dreamboard() {
       {active === "Creator’s Home" && <CreatorHome notes={notes} draft={draft} wordCount={wordCount} organized={organized} wisdomMode={wisdomMode} creatorSeason={creatorSeason} onGo={setActive} onOrganize={organize} vault={visionVault} snapshots={snapshots} importBatches={importBatches} projectTitle={writingDocument?.title || null} />}
       {active === "Search" && <SearchView user={passportUser} onGo={setActive} />}
       {active === "Vision Vault" && <VisionVaultView vault={visionVault} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} />}
-      {active === "Bulk Import" && <BulkImport importText={importText} setImportText={setImportText} onAddText={importNotes} singleInput={fileInput} onSingleFile={handleFile} bulkInput={bulkFileInput} onFiles={chooseImportFiles} files={importFiles} label={importLabel} setLabel={setImportLabel} importing={importing} progress={importProgress} batches={importBatches} signedIn={Boolean(passportUser)} onStart={() => void uploadImportBatch()} onPassport={() => setActive("Passport")} />}
+      {active === "Bulk Import" && <><BulkImport importText={importText} setImportText={setImportText} onAddText={importNotes} singleInput={fileInput} onSingleFile={handleFile} bulkInput={bulkFileInput} onFiles={chooseImportFiles} files={importFiles} label={importLabel} setLabel={setImportLabel} importing={importing} progress={importProgress} batches={importBatches} signedIn={Boolean(passportUser)} onStart={() => void uploadImportBatch()} onPassport={() => setActive("Passport")} /><ImportProcessingPanel pipeline={importPipeline} batches={importBatches} signedIn={Boolean(passportUser)} /></>}
       {active === "Knowledge Vault" && <section className="view"><div className="view-heading split"><div><span className="eyebrow">YOUR SOURCE LIBRARY</span><h2>Knowledge Vault</h2><p>{notes.length} pieces of material, all still yours.</p></div><button className="gold" onClick={organize}>✦ Organize my notes</button></div><label className="searchbox">⌕<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search your stories, research, reflections, and journal entries" /></label><div className="vault-list">{filtered.map(note => <article key={note.id}><div className="vault-icon">{note.kind === "Research" ? "⌘" : "✦"}</div><div><span>{note.kind} · {note.date}</span><h3>{note.title}</h3><p>{note.body}</p></div><div className="tag-stack">{note.tags.map(tag => <b key={tag}>{tag}</b>)}</div></article>)}{!filtered.length && <p className="empty-state">Nothing matched that search. Your original material remains safe in the vault.</p>}</div></section>}
       {active === "Creative Graph" && <CreativeGraphView graph={creativeGraph} signedIn={Boolean(passportUser)} onOpenSource={() => setActive("Knowledge Vault")} onVault={() => setActive("Knowledge Vault")} onPassport={() => setActive("Passport")} />}
       {active === "Book Architect" && <BookArchitectView state={bookChapters} activeIndex={Math.min(chapter, Math.max(0, bookChapters.chapters.length - 1))} onSelect={setChapter} sourceTitles={notes.map(note => note.title)} onWrite={() => setActive("Writing Studio")} onVault={() => setActive("Knowledge Vault")} />}

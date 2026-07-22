@@ -92,3 +92,15 @@
 .search-result span{font:10px "DM Sans";letter-spacing:.12em;opacity:.65;text-transform:uppercase}
 .search-result h3{margin:3px 0 4px;font-size:16px}
 .search-result p{margin:0;font-size:12px;opacity:.75;line-height:1.55}
+
+/* Import text extraction */
+.import-processing{margin-top:16px}
+.processing-batches{display:grid;gap:12px;margin-top:10px}
+.processing-batch{border:1px solid rgba(127,127,127,.22);border-radius:15px;padding:15px 17px;display:grid;gap:9px}
+.processing-batch-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.processing-batch-head small{display:block;opacity:.65;font-size:11px;margin-top:2px}
+.processing-current{margin:0;font:italic 11px "DM Sans";opacity:.7}
+.processing-files{display:grid;gap:8px;border-top:1px solid rgba(127,127,127,.18);padding-top:10px}
+.processing-file{display:flex;align-items:center;gap:10px}
+.processing-file b{font-size:12px}
+.processing-file small{display:block;opacity:.7;font-size:11px;line-height:1.45}
