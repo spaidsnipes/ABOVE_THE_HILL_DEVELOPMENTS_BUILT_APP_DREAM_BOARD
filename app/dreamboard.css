@@ -82,3 +82,13 @@
 .chapter-editor label{display:grid;gap:5px;font:10px/1.4 "DM Sans";letter-spacing:.14em}
 .chapter-editor input,.chapter-editor textarea{border:1px solid rgba(127,127,127,.35);background:rgba(255,255,255,.4);color:inherit;border-radius:10px;padding:10px 12px;font:13px/1.55 "DM Sans";outline:0;letter-spacing:normal}
 .chapter-editor textarea{min-height:70px;resize:vertical}
+
+/* Universal Search */
+.searchbar-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.searchbar-row .searchbox{flex:1;margin:0}
+.search-count{font:12px "DM Sans";opacity:.75;margin:14px 0 4px}
+.search-results{display:grid;gap:0;margin-top:8px}
+.search-result{display:grid;grid-template-columns:36px 1fr auto;gap:15px;align-items:center;padding:17px 4px;border-top:1px solid rgba(127,127,127,.18)}
+.search-result span{font:10px "DM Sans";letter-spacing:.12em;opacity:.65;text-transform:uppercase}
+.search-result h3{margin:3px 0 4px;font-size:16px}
+.search-result p{margin:0;font-size:12px;opacity:.75;line-height:1.55}

@@ -56,6 +56,11 @@ whenever a system changes tier.
   (vision, knowledge, documents), attach current writing document. Honest
   fallback when the migration hasn't run; Passport required (no local mode
   promised).
+- **Universal Search** (2026-07-22) — `app/search.tsx`: keyword search
+  (honestly labeled — not semantic) across Vision Vault, Knowledge Vault,
+  projects, writing documents, chapters, and graph nodes with domain
+  filters, excerpts, and open actions. Cloud queries are RLS-scoped per
+  Passport; signed-out mode searches this device's stores and says so.
 - **Book Architect** (2026-07-22) — real multi-chapter outline in
   `app/book-architect.tsx` + `supabase/dreamboard-book-architect.sql`:
   add/edit (title, purpose, notes, status)/duplicate/delete-with-confirm,
