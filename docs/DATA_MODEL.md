@@ -10,7 +10,10 @@ community → import → vision-vault.
 | `dreamboard_profiles` | core (+ passport-foundation) | Passport profile: display name, wisdom mode, season, theme, bio, disciplines, avatar_url |
 | `dreamboard_projects` | core (+ project-model) | Project containers: kind, lifecycle status, mission, intended outcome, completion definition, next action (metadata) |
 | `dreamboard_timeline_events` | core | Timeline events (schema present; UI pending) |
-| `dreamboard_lounge_posts` | core | Shared Lounge posts (community-readable) |
+| `dreamboard_lounge_posts` | core (+ lounge-community) | Shared Lounge posts: body, topic, project_ref, hidden flag |
+| `dreamboard_lounge_comments` | lounge-community | Lounge post comments |
+| `dreamboard_lounge_reports` | lounge-community | Private content reports (moderation queue) |
+| `dreamboard_lounge_blocks` | lounge-community | Per-user block list (private to blocker) |
 | `dreamboard_shop_products` | core | Shared shop catalog |
 | `dreamboard_radio_stations` | core | Shared radio stations |
 | `dreamboard_vault_entries` | creator-workspace | **Knowledge Vault**: external/source material; `source_document_id` links processed imports |

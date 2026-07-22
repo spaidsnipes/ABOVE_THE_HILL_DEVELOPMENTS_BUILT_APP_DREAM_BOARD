@@ -19,9 +19,9 @@ import { WritingStudioView } from "./writing-studio";
 import { ReaderView } from "./reader";
 import { AudiobookView } from "./audiobook";
 import { PublishingView } from "./publishing";
+import { LoungeView, useLounge } from "./lounge";
 
 type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[]; cloudId?: string };
-type LoungePost = { id: string | number; author: string; body: string; topic: string; time: string; likes: number };
 type Snapshot = { id: number; label: string; body: string; chapter: number; date: string; words: number };
 type ActiveView = "Creator’s Home" | "Search" | "Creator Compass" | "Projects" | "Bulk Import" | "Vision Vault" | "Knowledge Vault" | "Creative Graph" | "Book Architect" | "Writing Studio" | "Creative Timeline" | "Creation Journal" | "Version History" | "Reader" | "Audiobook Studio" | "Publishing" | "AI Studio" | "Passport" | "Lounge" | "Shop" | "Radio" | "Settings";
 type CreatorSeason = "planting" | "growing" | "building" | "blooming" | "harvest" | "stewardship" | "new-seeds";
@@ -31,18 +31,13 @@ type VaultEntry = { id: string; title: string; content: string; source_type: str
 type WritingDocument = { id: string; title: string; chapter_number: number; body: string; updated_at: string };
 
 const initialNotes: Note[] = [];
-const initialPosts: LoungePost[] = [];
 const starterDraft = "";
 const nav: Array<[string, ActiveView]> = [["⌂", "Creator’s Home"], ["⌖", "Search"], ["◇", "Passport"], ["✧", "Creator Compass"], ["▦", "Projects"], ["⇧", "Bulk Import"], ["✧", "Vision Vault"], ["⌕", "Knowledge Vault"], ["⌬", "Creative Graph"], ["✦", "Book Architect"], ["✎", "Writing Studio"], ["◫", "Version History"], ["▤", "Reader"], ["◉", "Audiobook Studio"], ["⇪", "Publishing"], ["◷", "Creative Timeline"], ["◫", "Creation Journal"], ["✦", "AI Studio"], ["◉", "Lounge"], ["▣", "Shop"], ["◌", "Radio"]];
 const shopItems: Array<{ id: string; name: string; kind: string; price: number; note: string }> = [];
 const wowWorldUrl = "https://wealthymindsets-pro.vercel.app";
 
 type CommunityStatus = "local" | "connecting" | "ready" | "needs-setup";
-type CommunityPostRow = { id: string; body: string; topic: string; created_at: string; author_label: string };
 
-function toLoungePost(row: CommunityPostRow): LoungePost {
-  return { id: row.id, author: row.author_label, body: row.body, topic: row.topic, time: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(row.created_at)), likes: 0 };
-}
 
 function readLocal<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -74,8 +69,6 @@ export default function Dreamboard() {
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved">("saved");
   const [notice, setNotice] = useState("Dreamboard is ready for your next real piece of work.");
   const [hydrated, setHydrated] = useState(false);
-  const [loungeText, setLoungeText] = useState("");
-  const [posts, setPosts] = useState(initialPosts);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [shopProducts, setShopProducts] = useState(shopItems);
   const [radioStream, setRadioStream] = useState("");
@@ -94,6 +87,7 @@ export default function Dreamboard() {
   const visionVault = useVisionVault(passportUser, setNotice);
   const creativeGraph = useCreativeGraph(passportUser, setNotice);
   const projects = useProjects(passportUser, setNotice, writingDocument?.id || null);
+  const lounge = useLounge(passportUser, displayName || passportHandle || (passportUser?.email?.split("@")[0] ?? "Creator"), setNotice);
   const bookChapters = useChapters(passportUser, setNotice);
   const importPipeline = useImportPipeline(passportUser, setNotice);
   const chapterTitles = bookChapters.chapters.length ? bookChapters.chapters.map(item => item.title) : ["Untitled chapter"];
@@ -106,7 +100,6 @@ export default function Dreamboard() {
     const timer = window.setTimeout(() => {
       setNotes(readLocal("dreamboard-notes-v2", initialNotes));
       setDraft(readLocal("dreamboard-draft-v2", starterDraft));
-      setPosts(readLocal("dreamboard-lounge", initialPosts));
       setCart(readLocal("dreamboard-cart", {}));
       setRadioStream(readLocal("dreamboard-radio-stream", ""));
       setSnapshots(readLocal<Snapshot[]>("dreamboard-snapshots", []));
@@ -149,7 +142,6 @@ export default function Dreamboard() {
     const settle = window.setTimeout(() => setSaveStatus("saved"), 700);
     return () => { window.clearTimeout(mark); window.clearTimeout(settle); };
   }, [draft, hydrated]);
-  useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-lounge", JSON.stringify(posts)); }, [posts, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-cart", JSON.stringify(cart)); }, [cart, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-radio-stream", JSON.stringify(radioStream)); }, [radioStream, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-snapshots", JSON.stringify(snapshots)); }, [snapshots, hydrated]);
@@ -181,13 +173,11 @@ export default function Dreamboard() {
     if (!supabase) return;
     const loadCommunity = async () => {
       setCommunityStatus("connecting");
-      const [loungeResult, stationResult, productResult] = await Promise.all([
-        supabase.from("dreamboard_lounge_posts").select("id, author_label, body, topic, created_at").order("created_at", { ascending: false }).limit(50),
+      const [stationResult, productResult] = await Promise.all([
         supabase.from("dreamboard_radio_stations").select("stream_url").eq("slug", "wow-radio").maybeSingle(),
         supabase.from("dreamboard_shop_products").select("sku, name, kind, price_cents, note").eq("is_active", true).order("sort_order"),
       ]);
-      if (loungeResult.error || stationResult.error || productResult.error) { setCommunityStatus("needs-setup"); return; }
-      setPosts((loungeResult.data || []).map(row => toLoungePost(row as CommunityPostRow)));
+      if (stationResult.error || productResult.error) { setCommunityStatus("needs-setup"); return; }
       if (stationResult.data?.stream_url) setRadioStream(stationResult.data.stream_url);
       if (productResult.data?.length) setShopProducts(productResult.data.filter(product => !["spiritual-awakening", "dreamboard-journal", "above-the-hill-print"].includes(product.sku)).map(product => ({ id: product.sku, name: product.name, kind: product.kind, price: product.price_cents / 100, note: product.note })));
       setCommunityStatus("ready");
@@ -284,7 +274,6 @@ export default function Dreamboard() {
       setNotice(`${assignments.length} note${assignments.length === 1 ? "" : "s"} themed on this device — approved by you, nothing invented.`);
     }
   };
-  const postToLounge = async () => { const body = loungeText.trim(); if (!body) return; const supabase = getSupabaseBrowserClient(); if (!supabase || !passportUser || !passportHandle) { setNotice("Set up your Passport before publishing to the shared Lounge."); setActive("Passport"); return; } const { data, error } = await supabase.from("dreamboard_lounge_posts").insert({ author_id: passportUser.id, author_label: displayName || `@${passportHandle}`, body, topic: "From Dreamboard" }).select("id, author_label, body, topic, created_at").single(); if (error || !data) { setNotice("Dreamboard could not publish that post. Please try again after confirming your Passport."); return; } setPosts(prev => [toLoungePost(data as CommunityPostRow), ...prev]); setLoungeText(""); setNotice("Your update is now shared in WOW World Lounge."); };
   const addToCart = (itemId: string) => { setCart(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 })); setNotice("Added to the Shop cart. Payments will be connected only when you choose your checkout provider."); };
   const toggleRadio = async () => {
     if (!radioStream.trim()) { setNotice("Paste a licensed stream URL first. Dreamboard will never invent a radio signal."); return; }
@@ -350,7 +339,7 @@ export default function Dreamboard() {
       {active === "Passport" && <PassportView user={passportUser} email={passportEmail} setEmail={setPassportEmail} handle={passportHandle} setHandle={setPassportHandle} status={passportStatus} message={passportMessage} onSend={() => void sendPassportMagicLink()} onSave={() => void savePassportProfile()} onSignOut={() => void signOutPassport()} notify={setNotice} />}
       {active === "Publishing" && <PublishingView user={passportUser} notify={setNotice} projects={projects.projects} chapters={bookChapters.chapters} chapterTitle={chapterTitle} draft={draft} projectTitle={writingDocument?.title || "Untitled project"} displayName={displayName || passportHandle} />}
       {active === "AI Studio" && <AIStudioView user={passportUser} notify={setNotice} wisdomEnabled={wisdomMode} context={{ projectTitle: writingDocument?.title || null, chapterTitle, draftExcerpt: draft, sources: notes.slice(0, 3).map(note => ({ title: note.title, excerpt: note.body })) }} runs={companionRuns} onRunSaved={run => setCompanionRuns(previous => [run, ...previous].slice(0, 20))} onAppendToDraft={text => setDraft(previous => previous ? `${previous}\n\n${text}` : text)} />}
-      {active === "Lounge" && <Lounge posts={posts} text={loungeText} setText={setLoungeText} onPost={postToLounge} status={communityStatus} />}
+      {active === "Lounge" && <LoungeView lounge={lounge} user={passportUser} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} />}
       {active === "Shop" && <Shop total={cartTotal} count={cartCount} onAdd={addToCart} items={shopProducts} status={communityStatus} />}
       {active === "Radio" && <Radio stream={radioStream} setStream={setRadioStream} playing={isPlaying} onToggle={toggleRadio} onPublish={publishRadio} audioRef={audio} status={communityStatus} />}
       {active === "Settings" && <Settings displayName={displayName} setDisplayName={setDisplayName} theme={dreamTheme} setTheme={setDreamTheme} wisdomMode={wisdomMode} setWisdomMode={setWisdomMode} creatorSeason={creatorSeason} setCreatorSeason={setCreatorSeason} signedIn={Boolean(passportUser)} onSave={() => void saveCreatorSettings()} onPassport={() => setActive("Passport")} />}
@@ -383,14 +372,6 @@ function VersionHistory({ snapshots, currentDraft, onSave, onRestore, onWrite }:
 
 function WowWorldSurface({ route, title, detail }: { route: "lounge" | "shop" | "radio"; title: string; detail: string }) { const url = `${wowWorldUrl}/${route}`; return <section className="wow-world-surface"><div className="wow-surface-head"><div><span className="eyebrow">LIVE WOW WORLD SURFACE</span><h3>{title}</h3><p>{detail}</p></div><a className="ghost" href={url} target="_blank" rel="noreferrer">Open full screen ↗</a></div><iframe title={title} src={url} loading="lazy" allow="autoplay; encrypted-media; clipboard-write" referrerPolicy="strict-origin-when-cross-origin" /></section>; }
 
-function Lounge({ posts, text, setText, onPost, status }: { posts: LoungePost[]; text: string; setText: (value: string) => void; onPost: () => Promise<void>; status: CommunityStatus }) {
-  const shared = status === "ready";
-  return <section className="view ecosystem-view">
-    <div className="view-heading"><span className="eyebrow">WOW WORLD LOUNGE</span><h2>Let the work find its people.</h2><p>Share creator updates in the World of Wealth, with every public moment intentional.</p></div>
-    <WowWorldSurface route="lounge" title="WOW World Lounge" detail="This is the live Lounge experience from the WOW World app, open inside Dreamboard." />
-    <div className="lounge-layout"><section className="lounge-composer"><div className="card-head"><div><span className="eyebrow">FROM YOUR CREATIVE DESK</span><h3>Post to the Lounge</h3></div><span className="live-dot">{shared ? "SHARED" : "SETUP REQUIRED"}</span></div><textarea value={text} onChange={event => setText(event.target.value)} placeholder="Share a thought, a milestone, or an invitation…" /><div><button className="gold" onClick={() => void onPost()} disabled={!text.trim()}>Share update <b>→</b></button></div><p>{shared ? "Posts are stored in the shared Lounge. A Passport is required before publishing." : "Connect Supabase and run the Dreamboard community script to publish shared Lounge posts."}</p></section><section className="lounge-feed">{posts.length ? posts.map(post => <article key={post.id}><div className="post-avatar">WOW</div><div><header><span><b>{post.author}</b><small>{post.topic} · {post.time}</small></span></header><p>{post.body}</p><footer><span>Community replies and sharing happen in the live WOW World Lounge above.</span></footer></div></article>) : <div className="empty-workspace"><span>◉</span><h3>The Lounge is waiting for its first shared post.</h3><p>Set up your Passport, then publish the thought that starts the room.</p></div>}</section></div>
-  </section>;
-}
 
 function Shop({ total, count, onAdd, items, status }: { total: number; count: number; onAdd: (itemId: string) => void; items: typeof shopItems; status: CommunityStatus }) { return <section className="view ecosystem-view"><div className="view-heading split"><div><span className="eyebrow">WOW WORLD SHOP</span><h2>Build the shelf around your work.</h2><p>Publish real books, art, journals, and future releases when they are ready.</p></div><div className="cart-summary"><span>YOUR CART</span><b>{count} item{count === 1 ? "" : "s"}</b><small>${total.toFixed(2)}</small></div></div><WowWorldSurface route="shop" title="WOW World Shop" detail="This is the live Shop experience from the WOW World app, open inside Dreamboard." />{items.length ? <div className="shop-grid">{items.map((item, index) => <article className={`shop-item tone-${index + 1}`} key={item.id}><div className="shop-art"><span>WOW<br />WORLD</span></div><div><span>{item.kind}</span><h3>{item.name}</h3><p>{item.note}</p><footer><b>${item.price.toFixed(2)}</b><button className="cart-button" onClick={() => onAdd(item.id)}>Add to cart +</button></footer></div></article>)}</div> : <section className="empty-workspace"><span>◫</span><h3>Your catalog is ready for real work.</h3><p>No sample products are shown here. Add your own product records when they are ready to publish.</p></section>}<div className="shop-connection"><span>{status === "ready" ? "SHARED CATALOG · CHECKOUT NEXT" : "PAYMENTS ARE NOT CONNECTED"}</span><p>{status === "ready" ? "The catalog comes from Dreamboard’s shared database. The cart works on this device; secure checkout needs the payment account you choose." : "Secure checkout comes next, after you decide which payment provider and account Dreamboard should use."}</p></div></section>; }
 
