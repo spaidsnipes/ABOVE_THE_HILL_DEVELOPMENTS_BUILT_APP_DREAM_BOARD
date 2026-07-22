@@ -34,6 +34,14 @@ whenever a system changes tier.
   confirmed_by_user). AI-suggested edges render dashed gold and require
   explicit confirm/reject. Honest fallback when the provenance migration
   hasn't been run. Each Knowledge Vault entry still creates a `source` node.
+- **Google Drive import (foundation)** (2026-07-22) — read-only OAuth
+  connector fully built: `app/api/drive/*` (consent, callback with state
+  check, file list, file/Google-Doc export download; session token in an
+  HttpOnly cookie only) and `app/drive-import.tsx` (browse/search Drive,
+  select, secure into a private import batch feeding the extraction
+  pipeline). Shows exact setup instructions until GOOGLE_DRIVE_CLIENT_ID /
+  _CLIENT_SECRET / _REDIRECT_URI are set — the only missing piece is those
+  credentials.
 - **Import text extraction** (2026-07-22) — `app/import-pipeline.tsx` +
   `supabase/dreamboard-import-extraction.sql` (ADR-0005): browser-side
   pipeline extracts txt/md/docx from preserved originals, tracks per-file
@@ -102,7 +110,6 @@ whenever a system changes tier.
 - Voice/image/file/link capture types for Vision Vault (model supports them;
   UI captures text only so far). Vision entries don't create graph nodes yet.
 - PDF text extraction and image OCR for imports (txt/md/docx now supported).
-- Google Drive import.
 - Embeddings / semantic graph links; real graph exploration UI.
 - Project tasks, milestones, collaborators. Linking chapters to specific
   writing documents (Writing Studio still holds one document). Attaching vision/knowledge entries to projects from their
