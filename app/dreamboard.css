@@ -69,3 +69,16 @@
 .project-detail textarea{min-height:84px;resize:vertical}
 .project-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:900px){.project-detail-grid{grid-template-columns:1fr}}
+
+/* Book Architect: real chapters */
+.architect-add{display:flex;flex-wrap:wrap;align-items:end;gap:14px;margin-bottom:16px}
+.architect-add label{flex:1;min-width:240px}
+.chapter-row{display:flex;align-items:stretch;gap:6px}
+.chapter-main{flex:1;display:flex;align-items:center;gap:12px;background:transparent;border:0;color:inherit;cursor:pointer;text-align:left;padding:0}
+.chapter-tools{display:flex;flex-direction:column;gap:3px;justify-content:center}
+.chapter-tools button{border:1px solid rgba(127,127,127,.3);background:transparent;color:inherit;border-radius:7px;width:24px;height:22px;font-size:11px;cursor:pointer;line-height:1}
+.chapter-tools button:disabled{opacity:.3;cursor:default}
+.chapter-editor{display:grid;gap:10px;margin:10px 0 14px}
+.chapter-editor label{display:grid;gap:5px;font:10px/1.4 "DM Sans";letter-spacing:.14em}
+.chapter-editor input,.chapter-editor textarea{border:1px solid rgba(127,127,127,.35);background:rgba(255,255,255,.4);color:inherit;border-radius:10px;padding:10px 12px;font:13px/1.55 "DM Sans";outline:0;letter-spacing:normal}
+.chapter-editor textarea{min-height:70px;resize:vertical}
