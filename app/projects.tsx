@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
+import { CollaborationPanel, useCollaboration } from "./collaboration";
 
 export const PROJECT_TYPES = ["book", "memoir", "research", "script", "comic", "podcast", "music", "application", "website", "game", "business", "course", "nonprofit", "custom"] as const;
 export const PROJECT_STATUSES = ["idea", "incubating", "planning", "active", "paused", "blocked", "review", "ready_to_publish", "published", "completed", "archived"] as const;
@@ -112,7 +113,9 @@ export function useProjects(user: User | null, notify: (message: string) => void
   return { projects, loadState, extended, createProject, updateProject, deleteProject, attachedCounts, attachCurrentDocument };
 }
 
-function ProjectEditor({ project, state, hasDocument, onWrite, chaptersComplete, chaptersTotal, wordCount }: { project: Project; state: ProjectsState; hasDocument: boolean; onWrite: () => void; chaptersComplete: number; chaptersTotal: number; wordCount: number }) {
+function ProjectEditor({ project, state, hasDocument, onWrite, chaptersComplete, chaptersTotal, wordCount, user, viewerLabel, notify }: { project: Project; state: ProjectsState; hasDocument: boolean; onWrite: () => void; chaptersComplete: number; chaptersTotal: number; wordCount: number; user: User | null; viewerLabel: string; notify: (message: string) => void }) {
+  const [showCollab, setShowCollab] = useState(false);
+  const collab = useCollaboration(user, showCollab ? project.id : null, viewerLabel, notify);
   const [description, setDescription] = useState(project.description);
   const [mission, setMission] = useState(project.mission);
   const [outcome, setOutcome] = useState(project.intended_outcome);
@@ -133,11 +136,13 @@ function ProjectEditor({ project, state, hasDocument, onWrite, chaptersComplete,
       <label className="vision-status">STATUS<select value={project.status} onChange={event => void state.updateProject(project.id, { status: event.target.value as ProjectStatus })}>{PROJECT_STATUSES.map(status => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}</select></label>
       {hasDocument && <button className="ghost" onClick={() => void state.attachCurrentDocument(project.id)}>Attach current writing document</button>}
       <button className="ghost" onClick={onWrite}>Open Writing Studio</button>
+      <button className="ghost" onClick={() => setShowCollab(previous => !previous)} aria-pressed={showCollab}>{showCollab ? "Hide collaborators" : "Collaborators"}</button>
       {project.status === "archived"
         ? <><button className="ghost" onClick={() => void state.updateProject(project.id, { status: "active" })}>Restore</button><button className="ghost" onClick={() => { if (window.confirm(`Permanently delete “${project.title}”? Attached material is kept but detached. This cannot be undone.`)) void state.deleteProject(project.id); }}>Delete</button></>
         : <button className="ghost" onClick={() => void state.updateProject(project.id, { status: "archived" })}>Archive</button>}
     </div>
     <FinishingPanel project={project} state={state} chaptersComplete={chaptersComplete} chaptersTotal={chaptersTotal} wordCount={wordCount} />
+    {showCollab && <CollaborationPanel collab={collab} user={user} ownerId={user?.id || ""} />}
   </>;
 }
 
@@ -183,7 +188,7 @@ function FinishingPanel({ project, state, chaptersComplete, chaptersTotal, wordC
   </div>;
 }
 
-export function ProjectsView({ state, signedIn, hasDocument, onPassport, onWrite, chaptersComplete, chaptersTotal, wordCount }: { state: ProjectsState; signedIn: boolean; hasDocument: boolean; onPassport: () => void; onWrite: () => void; chaptersComplete: number; chaptersTotal: number; wordCount: number }) {
+export function ProjectsView({ state, signedIn, hasDocument, onPassport, onWrite, chaptersComplete, chaptersTotal, wordCount, user, viewerLabel, notify }: { state: ProjectsState; signedIn: boolean; hasDocument: boolean; onPassport: () => void; onWrite: () => void; chaptersComplete: number; chaptersTotal: number; wordCount: number; user: User | null; viewerLabel: string; notify: (message: string) => void }) {
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState("book");
   const [showArchived, setShowArchived] = useState(false);
@@ -202,7 +207,7 @@ export function ProjectsView({ state, signedIn, hasDocument, onPassport, onWrite
       {visible.map(project => { const counts = state.attachedCounts[project.id] || { vision: 0, knowledge: 0, documents: 0 }; const isOpen = openId === project.id; return <article key={project.id} className={isOpen ? "project-card open" : "project-card"}>
         <button className="project-summary" onClick={() => setOpenId(isOpen ? null : project.id)} aria-expanded={isOpen}><div><span className="eyebrow">{project.kind.toUpperCase()} · {project.status.replace(/_/g, " ").toUpperCase()}</span><h3>{project.title}</h3>{project.description && !isOpen && <p>{project.description.slice(0, 140)}</p>}</div><small>{counts.documents} doc{counts.documents === 1 ? "" : "s"} · {counts.vision} idea{counts.vision === 1 ? "" : "s"} · {counts.knowledge} source{counts.knowledge === 1 ? "" : "s"}</small></button>
         {isOpen && <div className="project-detail">
-          {state.extended ? <ProjectEditor key={project.id} project={project} state={state} hasDocument={hasDocument} onWrite={onWrite} chaptersComplete={chaptersComplete} chaptersTotal={chaptersTotal} wordCount={wordCount} /> : <p className="empty-state">Run the project-model migration to edit mission, status, and completion definition here.</p>}
+          {state.extended ? <ProjectEditor key={project.id} project={project} state={state} hasDocument={hasDocument} onWrite={onWrite} chaptersComplete={chaptersComplete} chaptersTotal={chaptersTotal} wordCount={wordCount} user={user} viewerLabel={viewerLabel} notify={notify} /> : <p className="empty-state">Run the project-model migration to edit mission, status, and completion definition here.</p>}
         </div>}
       </article>; })}
       {!visible.length && <p className="empty-state">{showArchived ? "No archived projects." : "No projects yet. Dreamboard begins empty on purpose — create the first container for your real work above."}</p>}

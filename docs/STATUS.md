@@ -91,6 +91,14 @@ whenever a system changes tier.
   audio playback of a pasted licensed stream works.
 - **Settings / Creator Compass** — theme, season, wisdom mode persist to the
   profile.
+- **Collaboration foundation** (2026-07-22) — `app/collaboration.tsx` +
+  `supabase/dreamboard-collaboration.sql` (ADR-0006): project members,
+  invitations by email, six roles (owner/admin/editor/contributor/reviewer/
+  viewer), comments + review requests, and an activity feed — all enforced by
+  row-level security via SECURITY DEFINER helpers (no policy recursion) and an
+  RPC for invitation acceptance (no self role-escalation). Managers invite and
+  set roles; invitees accept/decline; access is a database policy, not client
+  state. Panel lives inside each project's detail.
 - **Publishing foundation** (2026-07-22) — `app/publishing.tsx` +
   `lib/epub.ts` + `supabase/dreamboard-publishing.sql`: real Markdown and
   EPUB 3 exports built in-browser from the actual manuscript (jszip, lazy),
@@ -147,7 +155,8 @@ whenever a system changes tier.
 - Project tasks, milestones, collaborators. Linking chapters to specific
   writing documents (Writing Studio still holds one document). Attaching vision/knowledge entries to projects from their
   vault views.
-- Collaboration: shared workspaces, comments, permissions, organizations.
+- Organizations/teams (project-level collaboration now exists); ownership
+  transfer; threaded comment replies.
 - PDF export, public preview pages, external publishing destinations;
   Marketplace checkout, creator economy.
 - Passport depth: Creative DNA, skills, reputation, timeline, legacy.
