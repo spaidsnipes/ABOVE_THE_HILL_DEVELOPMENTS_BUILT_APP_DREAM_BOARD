@@ -22,6 +22,7 @@ community → import → vision-vault.
 | `dreamboard_import_batches` | import-foundation | Bulk import batch records |
 | `dreamboard_source_documents` | import-foundation (+ import-extraction) | Per-file import records: storage path, extraction status/text/chars/error |
 | `dreamboard_chapters` | book-architect | Real chapter outline: part, title, purpose, notes, status, sort order |
+| `dreamboard_audio_narrations` | audiobook | Narration records: storage path, chapter link, pronunciation notes |
 | `dreamboard_vision_entries` | vision-vault | **Vision Vault**: the creator's own ideas/dreams/goals (ADR-0004) |
 
 Storage buckets: `dreamboard-private` (import originals, path

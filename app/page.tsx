@@ -16,6 +16,8 @@ import { DriveImportPanel } from "./drive-import";
 import { AIStudioView, type CompanionRun } from "./ai-studio";
 import { OrganizeReview } from "./organize";
 import { WritingStudioView } from "./writing-studio";
+import { ReaderView } from "./reader";
+import { AudiobookView } from "./audiobook";
 
 type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[]; cloudId?: string };
 type LoungePost = { id: string | number; author: string; body: string; topic: string; time: string; likes: number };
@@ -88,10 +90,6 @@ export default function Dreamboard() {
   const [passportStatus, setPassportStatus] = useState<"ready" | "sending" | "sent" | "saving" | "saved" | "needs-connection" | "error">(() => getSupabaseBrowserClient() ? "ready" : "needs-connection");
   const [passportMessage, setPassportMessage] = useState("");
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [readerMode, setReaderMode] = useState<"comfortable" | "night" | "paper">("comfortable");
-  const [readerScale, setReaderScale] = useState(18);
-  const [narrationUrl, setNarrationUrl] = useState("");
-  const [narrationName, setNarrationName] = useState("");
   const visionVault = useVisionVault(passportUser, setNotice);
   const creativeGraph = useCreativeGraph(passportUser, setNotice);
   const projects = useProjects(passportUser, setNotice, writingDocument?.id || null);
@@ -101,7 +99,6 @@ export default function Dreamboard() {
   const chapterTitle = chapterTitles[Math.min(chapter, chapterTitles.length - 1)];
   const fileInput = useRef<HTMLInputElement>(null);
   const bulkFileInput = useRef<HTMLInputElement>(null);
-  const narrationInput = useRef<HTMLInputElement>(null);
   const audio = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
@@ -261,7 +258,6 @@ export default function Dreamboard() {
       if (documentId) await supabase.from("dreamboard_document_versions").insert({ owner_id: passportUser.id, document_id: documentId, label: snapshot.label, body: draft, word_count: words });
       setNotice("A local and private cloud version were saved."); })(); };
   const restoreSnapshot = (snapshot: Snapshot) => { if (!window.confirm(`Restore “${snapshot.label}”? Your current draft is replaced in the editor — save a version first if you want to keep it.`)) return; setDraft(snapshot.body); setChapter(snapshot.chapter); setNotice(`Restored ${snapshot.label}. Your other saved versions are still available.`); setActive("Writing Studio"); };
-  const handleNarrationFile = (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setNarrationName(file.name); setNarrationUrl(URL.createObjectURL(file)); setNotice(`${file.name} is loaded into the Audiobook Studio for this browser session.`); };
   const saveJournal = () => { if (!journal.trim()) return; addNote(journal, "Journal"); setJournal(""); setNotice("Your journal entry was added to the vault as source material."); };
   const organize = () => { setOrganizeOpen(true); setActive("Knowledge Vault"); setNotice("Review the proposed themes below. Nothing changes until you approve it."); };
   const applyOrganize = (assignments: Array<{ id: number; theme: string }>) => {
@@ -348,8 +344,8 @@ export default function Dreamboard() {
       {active === "Creator Compass" && <CreatorCompass season={creatorSeason} setSeason={setCreatorSeason} wisdomMode={wisdomMode} setWisdomMode={setWisdomMode} onSave={() => void saveCreatorSettings()} />}
       {active === "Creative Timeline" && <Timeline notes={notes} />}
       {active === "Version History" && <VersionHistory snapshots={snapshots} currentDraft={draft} onSave={saveSnapshot} onRestore={restoreSnapshot} onWrite={() => setActive("Writing Studio")} />}
-      {active === "Reader" && <Reader draft={draft} chapter={chapter} title={chapterTitle} mode={readerMode} setMode={setReaderMode} scale={readerScale} setScale={setReaderScale} />}
-      {active === "Audiobook Studio" && <AudiobookStudio fileName={narrationName} source={narrationUrl} inputRef={narrationInput} onFile={handleNarrationFile} />}
+      {active === "Reader" && <ReaderView draft={draft} chapterIndex={chapter} chapterTitles={chapterTitles} onSelectChapter={setChapter} projectTitle={writingDocument?.title || "Your project"} />}
+      {active === "Audiobook Studio" && <AudiobookView user={passportUser} notify={setNotice} chapters={bookChapters.chapters} />}
       {active === "Passport" && <PassportView user={passportUser} email={passportEmail} setEmail={setPassportEmail} handle={passportHandle} setHandle={setPassportHandle} status={passportStatus} message={passportMessage} onSend={() => void sendPassportMagicLink()} onSave={() => void savePassportProfile()} onSignOut={() => void signOutPassport()} notify={setNotice} />}
       {active === "AI Studio" && <AIStudioView user={passportUser} notify={setNotice} wisdomEnabled={wisdomMode} context={{ projectTitle: writingDocument?.title || null, chapterTitle, draftExcerpt: draft, sources: notes.slice(0, 3).map(note => ({ title: note.title, excerpt: note.body })) }} runs={companionRuns} onRunSaved={run => setCompanionRuns(previous => [run, ...previous].slice(0, 20))} onAppendToDraft={text => setDraft(previous => previous ? `${previous}\n\n${text}` : text)} />}
       {active === "Lounge" && <Lounge posts={posts} text={loungeText} setText={setLoungeText} onPost={postToLounge} status={communityStatus} />}
@@ -378,9 +374,7 @@ function VersionHistory({ snapshots, currentDraft, onSave, onRestore, onWrite }:
   return <section className="view version-view"><div className="view-heading split"><div><span className="eyebrow">VERSION HISTORY</span><h2>Every brave edit has a way back.</h2><p>Versions are private to this device until your Passport is connected; cloud-backed project history is then saved under your account.</p></div><button className="gold" onClick={onSave}>Save a version <b>→</b></button></div>{comparing && <section className="compare-panel"><div className="card-head"><div><span className="eyebrow">COMPARE · SIDE BY SIDE</span><h3>{comparing.label} vs. current draft</h3></div><button className="ghost" onClick={() => setCompareId(null)}>Close compare</button></div><div className="compare-grid"><article><span>{comparing.date} · {comparing.words.toLocaleString()} words</span><p>{comparing.body || "(empty version)"}</p></article><article><span>Current draft · {currentWords.toLocaleString()} words</span><p>{currentDraft || "(empty draft)"}</p></article></div></section>}{snapshots.length ? <div className="snapshot-list">{snapshots.map(snapshot => <article key={snapshot.id}><div className="snapshot-seal">{String(snapshot.chapter + 1).padStart(2, "0")}</div><div><span>{snapshot.date} · {snapshot.words.toLocaleString()} words</span><h3>{snapshot.label}</h3><p>{snapshot.body.slice(0, 180)}{snapshot.body.length > 180 ? "…" : ""}</p></div><div className="vision-actions"><button className="ghost" onClick={() => setCompareId(snapshot.id)}>Compare</button><button className="ghost" onClick={() => onRestore(snapshot)}>Restore</button></div></article>)}</div> : <section className="empty-workspace"><span>◫</span><h3>Your first saved version is waiting.</h3><p>Keep writing, then choose Save version. Dreamboard will preserve up to 20 local versions while cloud history is being connected.</p><button className="gold" onClick={onWrite}>Open Writing Studio <b>→</b></button></section>}</section>;
 }
 
-function Reader({ draft, chapter, title, mode, setMode, scale, setScale }: { draft: string; chapter: number; title: string; mode: "comfortable" | "night" | "paper"; setMode: (mode: "comfortable" | "night" | "paper") => void; scale: number; setScale: (value: number) => void }) { return <section className="view reader-view"><div className="reader-toolbar"><div><span className="eyebrow">DREAMBOARD READER · PREVIEW</span><h2>Your project</h2></div><div className="reader-controls"><label>TYPE SIZE<input type="range" min="15" max="25" value={scale} onChange={event => setScale(Number(event.target.value))} /></label><div>{(["comfortable", "night", "paper"] as const).map(item => <button key={item} className={mode === item ? "reader-mode selected" : "reader-mode"} onClick={() => setMode(item)}>{item}</button>)}</div></div></div><article className={`reader-page reader-${mode}`} style={{ fontSize: `${scale}px` }}><span className="reader-kicker">CHAPTER {chapter + 1}</span><h3>{title}</h3>{draft.trim() ? draft.split(/\n\s*\n/).filter(Boolean).map((paragraph, index) => <p key={index}>{paragraph}</p>) : <p className="reader-empty">Your writing will appear here when you begin.</p>}<footer><span>DREAMBOARD</span><b>{chapter + 1}</b></footer></article></section>; }
 
-function AudiobookStudio({ fileName, source, inputRef, onFile }: { fileName: string; source: string; inputRef: RefObject<HTMLInputElement | null>; onFile: (event: ChangeEvent<HTMLInputElement>) => void }) { return <section className="view audio-studio"><div className="view-heading"><span className="eyebrow">AUDIOBOOK STUDIO · FOUNDATION</span><h2>Give the manuscript a voice.</h2><p>Bring in approved human narration one chapter at a time. Dreamboard keeps this first release focused on your owned or licensed audio.</p></div><div className="audio-grid"><section className="audio-card audio-upload"><span className="audio-icon">◉</span><h3>{fileName || "Add a narration file"}</h3><p>{fileName ? "Loaded for playback in this browser session. Cloud audio storage comes with the Supabase connection." : "MP3, WAV, M4A, and OGG are ready for a first listening pass."}</p><input ref={inputRef} type="file" accept="audio/mpeg,audio/wav,audio/x-m4a,audio/mp4,audio/ogg" onChange={onFile} hidden /><button className="gold" onClick={() => inputRef.current?.click()}>{fileName ? "Replace audio" : "Choose audio"} <b>→</b></button></section><section className="audio-card audio-deck"><span className="eyebrow">CHAPTER 03 · LEARNING TO LISTEN</span><h3>{fileName || "Narration deck"}</h3>{source ? <audio controls src={source} className="narration-player">Your browser does not support audio playback.</audio> : <div className="audio-empty"><i>▶</i><span>Audio appears here after you select a file.</span></div>}<div className="audio-timeline"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div><footer><span>Human narration only</span><span>Cloud publishing · next</span></footer></section></div></section>; }
 
 
 

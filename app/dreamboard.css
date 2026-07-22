@@ -150,3 +150,15 @@
 .compare-grid span{font:10px "DM Sans";letter-spacing:.12em;opacity:.65;text-transform:uppercase}
 .compare-grid p{margin:8px 0 0;font-size:12px;line-height:1.65;white-space:pre-wrap}
 @media(max-width:900px){.compare-grid{grid-template-columns:1fr}.with-sources .writing-body{grid-template-columns:1fr}}
+
+/* Reader progress + narration list */
+.reader-progress{height:4px;border-radius:99px;background:rgba(127,127,127,.2);margin:10px 0 14px;overflow:hidden}
+.reader-progress i{display:block;height:100%;background:linear-gradient(90deg,#b07d27,#e1be68);transition:width .2s}
+.reader-page{max-height:70vh;overflow-y:auto}
+.reader-note{font:italic 12px "DM Sans";opacity:.6;margin-top:22px}
+.narration-list{display:grid;gap:12px;margin-top:10px}
+.narration-list article{display:grid;grid-template-columns:1fr auto;gap:12px;border-top:1px solid rgba(127,127,127,.18);padding-top:12px}
+.narration-list b{font-size:13px}
+.narration-list small{display:block;opacity:.65;font-size:11px;margin:2px 0 7px}
+.narration-list textarea{width:100%;min-height:52px;resize:vertical;border:1px solid rgba(127,127,127,.3);background:rgba(255,255,255,.35);color:inherit;border-radius:9px;padding:8px 10px;font:12px/1.5 "DM Sans";outline:0}
+@media print{.rail,header,.notice,.reader-toolbar,.reader-progress{display:none!important}.reader-page{max-height:none;overflow:visible;box-shadow:none}}

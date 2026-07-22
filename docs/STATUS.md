@@ -34,6 +34,15 @@ whenever a system changes tier.
   confirmed_by_user). AI-suggested edges render dashed gold and require
   explicit confirm/reject. Honest fallback when the provenance migration
   hasn't been run. Each Knowledge Vault entry still creates a `source` node.
+- **Reader** (2026-07-22) — `app/reader.tsx`: chapter-aware (real chapter
+  select), reading-progress bar, typography controls, print/proof preview.
+  Honestly notes it shows the working draft until per-chapter manuscripts
+  exist.
+- **Audiobook Studio** (2026-07-22) — `app/audiobook.tsx` +
+  `supabase/dreamboard-audiobook.sql`: narrations upload to private storage
+  with persisted records, chapter links, pronunciation notes, signed-URL
+  playback, delete with confirm; session-only fallback when signed out.
+  Voice generation explicitly unavailable until a TTS provider is connected.
 - **Organize My Notes** (2026-07-22) — `lib/organize.ts` + `app/organize.tsx`:
   deterministic word-recurrence clustering (labeled in-app as "no AI ran"),
   possible-duplicate detection, open-question surfacing, and a review screen
@@ -109,8 +118,6 @@ whenever a system changes tier.
 
 ## Placeholder / partial (UI exists, substance thin)
 
-- **Reader** — renders the current draft only; fine as a preview.
-- **Audiobook Studio** — session-only object-URL playback; no cloud storage.
 - **Shop cart** — local cart math only; no checkout/payments (disclosed).
 - **Creative Timeline / Creation Journal** — thin views over the single
   writing document and local notes. `dreamboard_timeline_events` still
