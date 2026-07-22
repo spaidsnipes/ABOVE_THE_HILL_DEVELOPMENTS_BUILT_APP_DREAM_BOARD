@@ -15,7 +15,7 @@ community → import → vision-vault.
 | `dreamboard_radio_stations` | core | Shared radio stations |
 | `dreamboard_vault_entries` | creator-workspace | **Knowledge Vault**: external/source material |
 | `dreamboard_graph_nodes` | creator-workspace | Creative Graph nodes (source/theme/…) |
-| `dreamboard_graph_edges` | creator-workspace | Creative Graph relationships |
+| `dreamboard_graph_edges` | creator-workspace (+ graph-provenance) | Creative Graph relationships with provenance (origin/confidence/evidence/confirmed_by_user) |
 | `dreamboard_companion_runs` | creator-workspace | AI Companion request history + provenance |
 | `dreamboard_writing_documents` | creator-workspace | Writing Studio documents |
 | `dreamboard_document_versions` | creator-workspace | Writing Studio version history |

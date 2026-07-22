@@ -20,8 +20,15 @@ whenever a system changes tier.
   UX fully says "Passport"; internals still use WM naming.
 - **Knowledge Vault** — notes/journal/imports persist to
   `dreamboard_vault_entries` with localStorage fallback; search works.
-- **Creative Graph (storage)** — each vault entry creates a `source` node in
-  `dreamboard_graph_nodes`; nodes/edges load per owner.
+- **Creative Graph** (2026-07-22) — real visualization in
+  `app/creative-graph.tsx`: stored nodes rendered on a deterministic
+  golden-angle layout (no invented positions of meaning), stored edges drawn
+  with relationship labels, pan/zoom/selection, node-type and relationship
+  filters, manual connect/remove, and edge provenance
+  (`supabase/dreamboard-graph-provenance.sql`: origin, confidence, evidence,
+  confirmed_by_user). AI-suggested edges render dashed gold and require
+  explicit confirm/reject. Honest fallback when the provenance migration
+  hasn't been run. Each Knowledge Vault entry still creates a `source` node.
 - **Bulk Import** — real batched uploads to the `dreamboard-private` storage
   bucket with batch + per-file records (`dreamboard_import_batches`,
   `dreamboard_source_documents`), 3-way concurrency, partial-failure states.
@@ -39,9 +46,6 @@ whenever a system changes tier.
 
 ## Placeholder / partial (UI exists, substance thin)
 
-- **Creative Graph (visualization)** — decorative layout: first 8 source nodes
-  in fixed orbit positions, tags shown as themes; edges are stored but not
-  rendered as connections. No semantic linking (honestly disclosed in-app).
 - **"Organize my notes"** — relabels "Unsorted" tags to "Emerging thread";
   no real clustering or AI organization.
 - **Local Companion** — regex keyword routing to skill/persona names with
