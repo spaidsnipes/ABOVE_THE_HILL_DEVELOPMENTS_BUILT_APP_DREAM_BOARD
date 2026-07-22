@@ -47,3 +47,9 @@
 .cg-edge-list article small{opacity:.75;line-height:1.5;display:block}
 .cg-panel .empty-state{padding:8px 0;font-size:12px}
 @media(max-width:1050px){.cg-layout{grid-template-columns:1fr}}
+
+/* Creator Home: next meaningful step */
+.next-step-card{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;margin:16px 0;padding:22px 26px;border:1px solid rgba(180,137,59,.32);border-radius:21px;background:rgba(255,249,233,.6)}
+.theme-midnight-gold .next-step-card,.theme-violet-gold .next-step-card,.theme-blue-gold .next-step-card{background:rgba(223,189,103,.08)}
+.next-step-card h3{margin:4px 0 6px;font-size:21px}
+.next-step-card p{margin:0;font-size:13px;opacity:.8;max-width:560px;line-height:1.55}
