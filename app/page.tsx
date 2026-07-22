@@ -13,6 +13,7 @@ import { BookArchitectView, useChapters } from "./book-architect";
 import { SearchView } from "./search";
 import { ImportProcessingPanel, useImportPipeline } from "./import-pipeline";
 import { DriveImportPanel } from "./drive-import";
+import { AIStudioView, type CompanionRun } from "./ai-studio";
 
 type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[] };
 type LoungePost = { id: string | number; author: string; body: string; topic: string; time: string; likes: number };
@@ -22,15 +23,12 @@ type CreatorSeason = "planting" | "growing" | "building" | "blooming" | "harvest
 type DreamTheme = "emerald-gold" | "midnight-gold" | "violet-gold" | "blue-gold";
 type ImportBatch = { id: string; label: string; status: string; file_count: number; uploaded_count: number; failed_count: number; total_bytes: number; created_at: string };
 type VaultEntry = { id: string; title: string; content: string; source_type: string; status: string; tags: string[]; created_at: string; updated_at: string };
-type CompanionRun = { id: string; prompt: string; selected_skills: string[]; selected_persona: string; wisdom_enabled: boolean; output: { summary?: string; nextSteps?: string[]; confidence?: string; provenance?: string }; provider: string; created_at: string };
 type WritingDocument = { id: string; title: string; chapter_number: number; body: string; updated_at: string };
 
 const initialNotes: Note[] = [];
 const initialPosts: LoungePost[] = [];
 const starterDraft = "";
 const nav: Array<[string, ActiveView]> = [["⌂", "Creator’s Home"], ["⌖", "Search"], ["◇", "Passport"], ["✧", "Creator Compass"], ["▦", "Projects"], ["⇧", "Bulk Import"], ["✧", "Vision Vault"], ["⌕", "Knowledge Vault"], ["⌬", "Creative Graph"], ["✦", "Book Architect"], ["✎", "Writing Studio"], ["◫", "Version History"], ["▤", "Reader"], ["◉", "Audiobook Studio"], ["◷", "Creative Timeline"], ["◫", "Creation Journal"], ["✦", "AI Studio"], ["◉", "Lounge"], ["▣", "Shop"], ["◌", "Radio"]];
-const companionSkills = ["Vision Translator", "Creative Archivist", "Researcher", "Connector", "Critic", "Architect", "Finisher", "Prompt Engineer", "Story Finder", "Structure Builder", "Voice Keeper", "Project Steward", "Timeline Weaver", "Pattern Finder", "Audience Listener", "Opportunity Mapper", "Learning Guide", "Editor", "Question Maker", "Systems Thinker", "World Builder", "Scene Shaper", "Evidence Checker", "Memory Keeper", "Collaboration Guide", "Launch Planner", "Legacy Curator", "Focus Coach", "Resource Mapper", "Reflection Guide"];
-const companionPersonas = ["The Legendary Computer Architect", "The Humble Guide", "The Visionary", "The Warrior", "The Steward", "The Prayerful", "The Archivist", "The Builder", "The Editor", "The Teacher", "The Researcher", "The Listener", "The Finisher", "The Strategist", "The Storyteller", "The Cartographer", "The Guardian", "The Encourager", "The Pattern Seer", "The Producer", "The Designer", "The Skeptic", "The Connector", "The Historian", "The Mentor", "The Inventor", "The Witness", "The Planner", "The Craftsman", "The Peacemaker"];
 const shopItems: Array<{ id: string; name: string; kind: string; price: number; note: string }> = [];
 const wowWorldUrl = "https://wealthymindsets-pro.vercel.app";
 
@@ -75,9 +73,6 @@ export default function Dreamboard() {
   const [radioStream, setRadioStream] = useState("");
   const [communityStatus, setCommunityStatus] = useState<CommunityStatus>(() => getSupabaseBrowserClient() ? "connecting" : "local");
   const [isPlaying, setIsPlaying] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [aiResult, setAiResult] = useState("");
-  const [aiStatus, setAiStatus] = useState<"idle" | "working" | "ready" | "needs-connection">("idle");
   const [passportUser, setPassportUser] = useState<User | null>(null);
   const [passportEmail, setPassportEmail] = useState("");
   const [passportHandle, setPassportHandle] = useState("");
@@ -266,33 +261,6 @@ export default function Dreamboard() {
     try { await audio.current.play(); setIsPlaying(true); setNotice("WOW Radio is playing your connected stream."); } catch { setNotice("That stream could not play in this browser. Check the URL and stream permissions."); }
   };
   const publishRadio = async () => { const stream = radioStream.trim(); const supabase = getSupabaseBrowserClient(); if (!stream) { setNotice("Paste a licensed stream URL first."); return; } if (!supabase || !passportUser) { setNotice("Set up your Passport before publishing a shared station."); setActive("Passport"); return; } const { error } = await supabase.from("dreamboard_radio_stations").upsert({ slug: "wow-radio", name: "WOW Radio", owner_id: passportUser.id, stream_url: stream, is_live: true }, { onConflict: "slug" }); if (error) { setNotice("This station could not be published. The Passport that first published it owns its updates."); return; } setNotice("WOW Radio is now published for Dreamboard visitors."); };
-  const buildCompanionResult = (prompt: string) => {
-    const words = prompt.toLowerCase();
-    const matches = [
-      ["chapter|outline|structure|book", "Architect"], ["voice|tone|sound", "Voice Keeper"], ["research|source|fact", "Researcher"], ["finish|stuck|complete", "Finisher"], ["timeline|when|history", "Timeline Weaver"], ["pattern|theme|thread", "Pattern Finder"], ["audience|reader|share", "Audience Listener"], ["purpose|wisdom|faith|impact", "Reflection Guide"],
-    ].filter(([pattern]) => new RegExp(pattern).test(words)).map(([, skill]) => skill);
-    const selectedSkills = [...new Set(matches.concat(matches.length ? [] : ["Vision Translator", "Creative Archivist", "Connector"]))].slice(0, 3);
-    const persona = words.includes("finish") || words.includes("stuck") ? "The Finisher" : words.includes("research") ? "The Researcher" : wisdomMode ? "The Prayerful" : "The Humble Guide";
-    const currentSources = notes.slice(0, 3).map(note => `• Revisit “${note.title}” for language and lived detail.`);
-    const result = { summary: `Dreamboard’s local Companion routed this request through ${selectedSkills.join(", ")} with ${persona}. It found a review path without generating or changing your manuscript.`, nextSteps: ["Name the one sentence your reader should carry from this chapter.", ...currentSources.slice(0, 2), wisdomMode ? "Wisdom pause: consider your original purpose and who this work may bless." : "Choose the next faithful edit, then save a version."], confidence: "Framework guidance — review with your judgment.", provenance: "Human material: your prompt, draft, and private vault. AI contribution: local routing and prompts only." };
-    return { selectedSkills, persona, result };
-  };
-  const askAI = async () => {
-    if (!aiPrompt.trim()) return;
-    setAiStatus("working"); setAiResult("");
-    const local = buildCompanionResult(aiPrompt);
-    let finalText = `${local.result.summary}\n\n${local.result.nextSteps.join("\n")}`;
-    let provider = "local-framework";
-    let status: "ready" | "needs-connection" = "needs-connection";
-    try {
-      const response = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: aiPrompt, context: `Project: ${writingDocument?.title || "Untitled project"}. Active chapter: ${chapterTitle}. Draft excerpt: ${draft.slice(0, 2200)}` }) });
-      const data = await response.json() as { text?: string; error?: string; configured?: boolean };
-      if (response.ok && data.text) { finalText = `${data.text}\n\n— Companion routing: ${local.selectedSkills.join(", ")} · ${local.persona}`; provider = "connected-model"; status = "ready"; }
-    } catch { /* The local companion remains available without a model provider. */ }
-    setAiStatus(status); setAiResult(finalText);
-    const supabase = getSupabaseBrowserClient();
-    if (supabase && passportUser) { const { data } = await supabase.from("dreamboard_companion_runs").insert({ owner_id: passportUser.id, prompt: aiPrompt, selected_skills: local.selectedSkills, selected_persona: local.persona, wisdom_enabled: wisdomMode, output: local.result, provider, status: provider === "connected-model" ? "complete" : "needs-model" }).select("id,prompt,selected_skills,selected_persona,wisdom_enabled,output,provider,created_at").single(); if (data) setCompanionRuns(previous => [data as CompanionRun, ...previous].slice(0, 20)); }
-  };
   const sendPassportMagicLink = async () => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) { setPassportStatus("needs-connection"); setPassportMessage("Passport needs its Supabase connection values added in Vercel first."); return; }
@@ -348,7 +316,7 @@ export default function Dreamboard() {
       {active === "Reader" && <Reader draft={draft} chapter={chapter} title={chapterTitle} mode={readerMode} setMode={setReaderMode} scale={readerScale} setScale={setReaderScale} />}
       {active === "Audiobook Studio" && <AudiobookStudio fileName={narrationName} source={narrationUrl} inputRef={narrationInput} onFile={handleNarrationFile} />}
       {active === "Passport" && <PassportView user={passportUser} email={passportEmail} setEmail={setPassportEmail} handle={passportHandle} setHandle={setPassportHandle} status={passportStatus} message={passportMessage} onSend={() => void sendPassportMagicLink()} onSave={() => void savePassportProfile()} onSignOut={() => void signOutPassport()} notify={setNotice} />}
-      {active === "AI Studio" && <AIStudio prompt={aiPrompt} setPrompt={setAiPrompt} status={aiStatus} result={aiResult} onAsk={askAI} runs={companionRuns} />}
+      {active === "AI Studio" && <AIStudioView user={passportUser} notify={setNotice} wisdomEnabled={wisdomMode} context={{ projectTitle: writingDocument?.title || null, chapterTitle, draftExcerpt: draft, sources: notes.slice(0, 3).map(note => ({ title: note.title, excerpt: note.body })) }} runs={companionRuns} onRunSaved={run => setCompanionRuns(previous => [run, ...previous].slice(0, 20))} onAppendToDraft={text => setDraft(previous => previous ? `${previous}\n\n${text}` : text)} />}
       {active === "Lounge" && <Lounge posts={posts} text={loungeText} setText={setLoungeText} onPost={postToLounge} status={communityStatus} />}
       {active === "Shop" && <Shop total={cartTotal} count={cartCount} onAdd={addToCart} items={shopProducts} status={communityStatus} />}
       {active === "Radio" && <Radio stream={radioStream} setStream={setRadioStream} playing={isPlaying} onToggle={toggleRadio} onPublish={publishRadio} audioRef={audio} status={communityStatus} />}
@@ -376,7 +344,6 @@ function AudiobookStudio({ fileName, source, inputRef, onFile }: { fileName: str
 
 
 
-function AIStudio({ prompt, setPrompt, status, result, onAsk, runs }: { prompt: string; setPrompt: (value: string) => void; status: string; result: string; onAsk: () => void; runs: CompanionRun[] }) { return <section className="view ai-studio"><div className="view-heading"><span className="eyebrow">CREATIVE COMPANION · 30 SKILLS / 30 PERSONAS</span><h2>Creative intelligence, under your direction.</h2><p>Dreamboard routes every request to a small, reviewable team. Its local framework works now; a connected model adds generative analysis only after you deliberately provide a provider connection. It never silently changes your manuscript.</p></div><div className="ai-grid"><section className="ai-card"><div className="card-head"><div><span className="eyebrow">ASK FOR A REVIEW</span><h3>Keep your voice in charge.</h3></div><span className={status === "ready" ? "ai-pill connected" : "ai-pill"}>{status === "ready" ? "MODEL CONNECTED" : "LOCAL COMPANION READY"}</span></div><textarea value={prompt} onChange={event => setPrompt(event.target.value)} aria-label="AI request" /><button className="gold" onClick={onAsk} disabled={status === "working"}>{status === "working" ? "Routing…" : "Ask the Companion"} <b>→</b></button><p className="assist-note">Human material stays yours. Every recommendation is reviewable and nothing is applied automatically.</p></section><section className="ai-card ai-result"><span className="eyebrow">REVIEW PANEL</span><h3>{status === "ready" ? "A suggestion to review" : "Your local Companion"}</h3><p>{result || "Ask a question and Dreamboard will create a private routing record with the selected skills, persona, provenance, and next steps. A connected open model can deepen the analysis when you are ready."}</p>{status === "needs-connection" && <div className="connection-note"><b>Model connection is optional:</b><span>The framework and history work today. Add AI_BASE_URL, AI_API_KEY, and AI_MODEL to Vercel only when you choose your provider.</span></div>}</section></div><section className="companion-map"><div><span className="eyebrow">COMPANION LIBRARY</span><h3>30 skills · 30 personas</h3><p>{companionSkills.slice(0, 10).join(" · ")} · and 20 more routing skills.</p></div><div><b>{companionPersonas.slice(0, 6).join(" · ")}</b><small>{runs.length ? `${runs.length} private companion request${runs.length === 1 ? "" : "s"} saved to your account.` : "Your request history appears here after you sign in."}</small></div></section></section>; }
 
 function WowWorldSurface({ route, title, detail }: { route: "lounge" | "shop" | "radio"; title: string; detail: string }) { const url = `${wowWorldUrl}/${route}`; return <section className="wow-world-surface"><div className="wow-surface-head"><div><span className="eyebrow">LIVE WOW WORLD SURFACE</span><h3>{title}</h3><p>{detail}</p></div><a className="ghost" href={url} target="_blank" rel="noreferrer">Open full screen ↗</a></div><iframe title={title} src={url} loading="lazy" allow="autoplay; encrypted-media; clipboard-write" referrerPolicy="strict-origin-when-cross-origin" /></section>; }
 
