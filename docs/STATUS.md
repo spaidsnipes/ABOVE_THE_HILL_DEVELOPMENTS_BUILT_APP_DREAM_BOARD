@@ -17,7 +17,12 @@ whenever a system changes tier.
 
 - **Passport** — magic-link sign-in, handle claim (`wm_id` table), profile
   (display name, wisdom mode, creator season, theme) in `dreamboard_profiles`.
-  UX fully says "Passport"; internals still use WM naming.
+  UX fully says "Passport". View extracted to `app/passport.tsx`
+  (2026-07-22) with a creator-identity profile section (biography,
+  disciplines — `supabase/dreamboard-passport-foundation.sql`) and a truthful
+  roadmap card for future Passport systems. Internal state renamed
+  passportUser/passportHandle/etc.; only the `wm_id` table keeps its legacy
+  name for WOW World compatibility (ADR-0001).
 - **Knowledge Vault** — notes/journal/imports persist to
   `dreamboard_vault_entries` with localStorage fallback; search works.
 - **Creative Graph** (2026-07-22) — real visualization in
@@ -87,7 +92,7 @@ whenever a system changes tier.
 
 - `app/page.tsx` holds all 19 views (~400 dense lines). Decompose
   incrementally per CLAUDE.md.
-- WM naming remnants: `wm_id` table, `wmUser`/`wmHandle`/`wmStatus` state,
-  `app/wm-id.css`, `supabase/wm-id-schema.sql`.
+- WM naming remnants: `wm_id` table (kept, ADR-0001), `app/wm-id.css`
+  classnames, `supabase/wm-id-schema.sql`.
 - Unused starter scaffolding: Drizzle/D1 (`db/`, `drizzle/`, `examples/d1`),
   `.openai/hosting.json`, `app/chatgpt-auth.ts`.
