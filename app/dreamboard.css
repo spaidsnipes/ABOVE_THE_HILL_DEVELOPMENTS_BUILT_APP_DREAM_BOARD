@@ -22,3 +22,28 @@
 .vision-edit textarea{min-height:130px;resize:vertical}
 .quick-capture textarea{width:100%;min-height:96px;resize:vertical;border:1px solid rgba(127,127,127,.3);background:rgba(255,255,255,.4);color:inherit;border-radius:12px;margin:12px 0;padding:14px;font:14px/1.6 "DM Sans";outline:0}
 .quick-capture .gold{justify-self:start}
+
+/* Creative Graph canvas */
+.cg-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.cg-controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.cg-toggle{gap:9px;padding:0;border:0;background:transparent}
+.cg-layout{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+.cg-canvas{position:relative;border:1px solid rgba(127,127,127,.25);border-radius:21px;overflow:hidden;min-height:520px;background:rgba(10,26,21,.92)}
+.cg-canvas svg{display:block;width:100%;height:520px;cursor:grab;touch-action:none}
+.cg-canvas[data-connecting="true"] svg{cursor:crosshair}
+.cg-node{cursor:pointer;outline:none}
+.cg-node:focus circle{stroke:#dcb86b;stroke-width:3}
+.cg-node-label{fill:#e9e4d6;font:10px "DM Sans";text-anchor:middle;pointer-events:none}
+.cg-edge{stroke:#7fa99b}
+.cg-edge-suggested{stroke:#dcb86b;stroke-dasharray:6 5}
+.cg-edge-label{fill:#dcb86b;font:italic 10px "DM Sans";text-anchor:middle;pointer-events:none}
+.cg-cap-note{position:absolute;bottom:10px;left:16px;margin:0;font:10px "DM Sans";letter-spacing:.08em;color:#cfc9b8;opacity:.75}
+.cg-panel{border:1px solid rgba(127,127,127,.25);border-radius:21px;padding:22px;display:grid;gap:12px;align-content:start;background:rgba(255,255,255,.5)}
+.theme-midnight-gold .cg-panel,.theme-violet-gold .cg-panel,.theme-blue-gold .cg-panel{background:rgba(255,255,255,.05)}
+.cg-panel h3{margin:0}
+.cg-edge-list{display:grid;gap:10px;margin-top:6px}
+.cg-edge-list article{display:grid;gap:8px;border-top:1px solid rgba(127,127,127,.22);padding-top:10px}
+.cg-edge-list article b{font-size:13px}
+.cg-edge-list article small{opacity:.75;line-height:1.5;display:block}
+.cg-panel .empty-state{padding:8px 0;font-size:12px}
+@media(max-width:1050px){.cg-layout{grid-template-columns:1fr}}
