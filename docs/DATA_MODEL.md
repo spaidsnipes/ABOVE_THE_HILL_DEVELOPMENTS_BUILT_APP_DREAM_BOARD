@@ -7,7 +7,7 @@ community → import → vision-vault.
 | Table | Script | Purpose |
 | --- | --- | --- |
 | `wm_id` | wm-id-schema.sql | Legacy Passport handle (user_id → handle), shared with WOW World |
-| `dreamboard_profiles` | core | Passport profile: display name, wisdom mode, season, theme |
+| `dreamboard_profiles` | core (+ passport-foundation) | Passport profile: display name, wisdom mode, season, theme, bio, disciplines, avatar_url |
 | `dreamboard_projects` | core | Project containers (schema present; UI pending) |
 | `dreamboard_timeline_events` | core | Timeline events (schema present; UI pending) |
 | `dreamboard_lounge_posts` | core | Shared Lounge posts (community-readable) |
