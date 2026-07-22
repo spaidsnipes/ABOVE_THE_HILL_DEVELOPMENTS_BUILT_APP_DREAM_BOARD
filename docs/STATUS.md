@@ -91,6 +91,12 @@ whenever a system changes tier.
   audio playback of a pasted licensed stream works.
 - **Settings / Creator Compass** — theme, season, wisdom mode persist to the
   profile.
+- **Finishing Engine** (2026-07-22) — inside each project's detail:
+  deterministic readiness rules over real data (definition of done, mission,
+  chapters complete, words present, remaining-work list empty, no blockers),
+  creator-managed remaining-work / blockers / deferred-ideas lists, version
+  target, and a "ready to publish" action that unlocks only when every rule
+  passes. Labeled "transparent rules, no AI judgment."
 - **Projects** (2026-07-22) — real multi-project support in
   `app/projects.tsx`: create/edit/archive/restore/delete-with-confirm,
   full lifecycle statuses (idea → … → completed/archived), mission /
