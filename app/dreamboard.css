@@ -227,3 +227,21 @@
 .template-tools{font:11px "DM Sans";opacity:.65;margin:6px 0 2px;letter-spacing:.02em}
 .template-tools.detail{opacity:.85;letter-spacing:normal;font-size:12px}
 .template-tools.detail b{color:#a57628}
+
+/* Active-context switcher + banner */
+.context-switch-wrap{position:relative}
+.context-switch{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid rgba(127,127,127,.3);border-radius:99px;background:rgba(255,255,255,.5);color:inherit;font:11px "DM Sans";cursor:pointer}
+.theme-midnight-gold .context-switch,.theme-violet-gold .context-switch,.theme-blue-gold .context-switch{background:rgba(255,255,255,.06)}
+.context-switch b{font-size:9px;opacity:.7}
+.context-menu{position:absolute;top:calc(100% + 8px);left:0;z-index:40;width:320px;max-width:80vw;border:1px solid rgba(127,127,127,.25);border-radius:14px;background:var(--menu-bg,#12201b);padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+.theme-emerald-gold .context-menu{background:#f6f4ec;color:#17372f}
+.context-menu-head{display:flex;justify-content:space-between;align-items:center;font:10px "DM Sans";letter-spacing:.12em;opacity:.7;margin-bottom:6px}
+.context-menu-note{margin:0 0 10px;font-size:11px;opacity:.7;line-height:1.5}
+.context-menu-list{display:grid;gap:5px;max-height:260px;overflow-y:auto}
+.context-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 8px;border-radius:9px}
+.context-row.on{background:rgba(165,118,40,.1)}
+.context-row label{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer}
+.context-row .text-button{font-size:10px;opacity:.65}
+.context-row .text-button.primary{opacity:1;color:#a57628;font-weight:600}
+.context-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 14px;margin-bottom:12px;border:1px solid rgba(165,118,40,.3);border-radius:11px;background:rgba(255,249,233,.55);font-size:12px}
+.theme-midnight-gold .context-banner,.theme-violet-gold .context-banner,.theme-blue-gold .context-banner{background:rgba(223,189,103,.08)}

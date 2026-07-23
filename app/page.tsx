@@ -20,14 +20,15 @@ import { ReaderView } from "./reader";
 import { AudiobookView } from "./audiobook";
 import { PublishingView } from "./publishing";
 import { LoungeView, useLounge } from "./lounge";
+import { useActiveContext, MAX_ACTIVE } from "../lib/active-context";
 
-type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[]; cloudId?: string };
+type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[]; cloudId?: string; projectId?: string | null };
 type Snapshot = { id: number; label: string; body: string; chapter: number; date: string; words: number };
 type ActiveView = "Creator’s Home" | "Search" | "Creator Compass" | "Projects" | "Bulk Import" | "Vision Vault" | "Knowledge Vault" | "Creative Graph" | "Book Architect" | "Writing Studio" | "Creative Timeline" | "Creation Journal" | "Version History" | "Reader" | "Audiobook Studio" | "Publishing" | "AI Studio" | "Passport" | "Lounge" | "Shop" | "Radio" | "Settings";
 type CreatorSeason = "planting" | "growing" | "building" | "blooming" | "harvest" | "stewardship" | "new-seeds";
 type DreamTheme = "emerald-gold" | "midnight-gold" | "violet-gold" | "blue-gold";
 type ImportBatch = { id: string; label: string; status: string; file_count: number; uploaded_count: number; failed_count: number; total_bytes: number; created_at: string };
-type VaultEntry = { id: string; title: string; content: string; source_type: string; status: string; tags: string[]; created_at: string; updated_at: string };
+type VaultEntry = { id: string; title: string; content: string; source_type: string; status: string; tags: string[]; project_id: string | null; created_at: string; updated_at: string };
 type WritingDocument = { id: string; title: string; chapter_number: number; body: string; updated_at: string };
 
 const initialNotes: Note[] = [];
@@ -46,6 +47,21 @@ function readLocal<T>(key: string, fallback: T): T {
 
 function storageSafeName(name: string) {
   return name.normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "untitled-file";
+}
+
+function ProjectSwitcher({ projects, activeContext, onManage }: { projects: Array<{ id: string; title: string }>; activeContext: ReturnType<typeof useActiveContext>; onManage: () => void }) {
+  const [open, setOpen] = useState(false);
+  const primary = projects.find(project => project.id === activeContext.primaryId) || null;
+  if (!projects.length) return <button className="context-switch" onClick={onManage}>No projects yet</button>;
+  const label = !activeContext.filtersOn ? "All projects" : activeContext.activeIds.length === 1 ? (primary?.title || "1 project") : `${activeContext.activeIds.length} in focus`;
+  return <div className="context-switch-wrap">
+    <button className="context-switch" onClick={() => setOpen(value => !value)} aria-expanded={open} title="Choose the active project context">◈ {label.length > 26 ? `${label.slice(0, 25)}…` : label} <b>▾</b></button>
+    {open && <div className="context-menu" role="menu">
+      <div className="context-menu-head"><span>ACTIVE CONTEXT · up to {MAX_ACTIVE}</span>{activeContext.filtersOn && <button className="text-button" onClick={() => { activeContext.clear(); }}>Clear</button>}</div>
+      <p className="context-menu-note">Only the projects you select share context and receive new captures. Nothing blends automatically.</p>
+      <div className="context-menu-list">{projects.slice(0, 40).map(project => { const on = activeContext.activeIds.includes(project.id); const isPrimary = activeContext.primaryId === project.id; return <div key={project.id} className={on ? "context-row on" : "context-row"}><label><input type="checkbox" checked={on} onChange={() => activeContext.toggle(project.id)} />{project.title}</label>{on && <button className={isPrimary ? "text-button primary" : "text-button"} onClick={() => activeContext.setPrimary(project.id)}>{isPrimary ? "primary" : "make primary"}</button>}</div>; })}</div>
+    </div>}
+  </div>;
 }
 
 export default function Dreamboard() {
@@ -84,9 +100,13 @@ export default function Dreamboard() {
   const [passportStatus, setPassportStatus] = useState<"ready" | "sending" | "sent" | "saving" | "saved" | "needs-connection" | "error">(() => getSupabaseBrowserClient() ? "ready" : "needs-connection");
   const [passportMessage, setPassportMessage] = useState("");
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const visionVault = useVisionVault(passportUser, setNotice);
+  const activeContextEarly = useActiveContext();
+  const visionVault = useVisionVault(passportUser, setNotice, activeContextEarly.primaryId);
   const creativeGraph = useCreativeGraph(passportUser, setNotice);
   const projects = useProjects(passportUser, setNotice, writingDocument?.id || null);
+  const activeContext = activeContextEarly;
+  const primaryProject = projects.projects.find(project => project.id === activeContext.primaryId) || null;
+  const contextLabel = activeContext.filtersOn ? (activeContext.activeIds.length === 1 ? (primaryProject?.title || "1 project") : `${activeContext.activeIds.length} projects${primaryProject ? ` · primary: ${primaryProject.title}` : ""}`) : "all projects";
   const lounge = useLounge(passportUser, displayName || passportHandle || (passportUser?.email?.split("@")[0] ?? "Creator"), setNotice);
   const bookChapters = useChapters(passportUser, setNotice);
   const importPipeline = useImportPipeline(passportUser, setNotice);
@@ -121,13 +141,13 @@ export default function Dreamboard() {
     if (!supabase || !passportUser) return;
     const loadWorkspace = async () => {
       const [vaultResult, companionResult, documentsResult] = await Promise.all([
-        supabase.from("dreamboard_vault_entries").select("id,title,content,source_type,status,tags,created_at,updated_at").order("updated_at", { ascending: false }).limit(500),
+        supabase.from("dreamboard_vault_entries").select("id,title,content,source_type,status,tags,project_id,created_at,updated_at").order("updated_at", { ascending: false }).limit(500),
         supabase.from("dreamboard_companion_runs").select("id,prompt,selected_skills,selected_persona,wisdom_enabled,output,provider,created_at").order("created_at", { ascending: false }).limit(20),
         supabase.from("dreamboard_writing_documents").select("id,title,chapter_number,body,updated_at").order("updated_at", { ascending: false }).limit(1),
       ]);
       if (vaultResult.data) {
         const remoteVault = vaultResult.data as VaultEntry[];
-        if (remoteVault.length) setNotes(remoteVault.map((entry, index) => ({ id: index + 1, cloudId: entry.id, title: entry.title, body: entry.content, kind: entry.source_type, date: new Date(entry.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), tags: entry.tags || [] })));
+        if (remoteVault.length) setNotes(remoteVault.map((entry, index) => ({ id: index + 1, cloudId: entry.id, projectId: entry.project_id ?? null, title: entry.title, body: entry.content, kind: entry.source_type, date: new Date(entry.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), tags: entry.tags || [] })));
       }
       if (companionResult.data) setCompanionRuns(companionResult.data as CompanionRun[]);
       if (documentsResult.data?.[0]) { const document = documentsResult.data[0] as WritingDocument; setWritingDocument(document); setDraft(document.body); setChapter(Math.max(0, document.chapter_number - 1)); }
@@ -185,20 +205,20 @@ export default function Dreamboard() {
     void loadCommunity();
   }, []);
 
-  const filtered = useMemo(() => notes.filter(note => `${note.title} ${note.body} ${note.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [notes, query]);
+  const filtered = useMemo(() => notes.filter(note => activeContext.includes(note.projectId)).filter(note => `${note.title} ${note.body} ${note.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [notes, query, activeContext]);
   const wordCount = draft.trim() ? draft.trim().split(/\s+/).length : 0;
   const cartCount = Object.values(cart).reduce((total, quantity) => total + quantity, 0);
   const cartTotal = shopProducts.reduce((total, item) => total + item.price * (cart[item.id] || 0), 0);
   const addNote = (body: string, kind = "Imported") => {
     const clean = body.trim(); if (!clean) return;
     const title = clean.split(/\n|\.|!/)[0].slice(0, 58) || "Untitled source";
-    const localNote: Note = { id: Date.now(), title, body: clean, kind, date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), tags: ["Unsorted"] };
+    const localNote: Note = { id: Date.now(), title, body: clean, kind, date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), tags: ["Unsorted"], projectId: activeContextEarly.primaryId };
     setNotes(prev => [localNote, ...prev]);
     const supabase = getSupabaseBrowserClient();
     if (!supabase || !passportUser) return;
     void (async () => {
       const sourceType = kind === "Journal" ? "journal" : kind === "Research" ? "research" : "manual";
-      const { data: entry, error } = await supabase.from("dreamboard_vault_entries").insert({ owner_id: passportUser.id, title, content: clean, source_type: sourceType, tags: ["Unsorted"] }).select("id,title,content,source_type,status,tags,created_at,updated_at").single();
+      const { data: entry, error } = await supabase.from("dreamboard_vault_entries").insert({ owner_id: passportUser.id, title, content: clean, source_type: sourceType, tags: ["Unsorted"], project_id: activeContextEarly.primaryId }).select("id,title,content,source_type,status,tags,project_id,created_at,updated_at").single();
       if (error || !entry) { setNotice("This note remains safely on this device. Dreamboard could not save its cloud copy yet."); return; }
       const saved = entry as VaultEntry;
       setNotes(previous => previous.map(note => note.id === localNote.id ? { ...note, cloudId: saved.id } : note));
@@ -319,11 +339,11 @@ export default function Dreamboard() {
       <button className="founder" onClick={() => setActive("Settings")}><span>AH</span><div><b>Above the Hill</b><small>Settings · founder workspace</small></div></button>
     </aside>
     <section className="stage">
-      <header><div><span className="eyebrow">DREAMBOARD · WOW WORLD CREATIVE SYSTEM</span><h1>{active}</h1></div><div className="header-actions"><button className="wm-account" onClick={() => setActive("Passport")}>{passportUser ? `@${passportHandle || passportUser.email?.split("@")[0] || "member"}` : "Set up Passport"}</button><span className="presence"><i /> {hydrated ? "Saved on this device" : "Opening workspace"}</span><button className="ghost" onClick={() => setActive("Bulk Import")}>Import material</button><button className="gold" onClick={() => setActive("Writing Studio")}>Continue creating <b>→</b></button></div></header>
+      <header><div><span className="eyebrow">DREAMBOARD · WOW WORLD CREATIVE SYSTEM</span><h1>{active}</h1></div><div className="header-actions"><ProjectSwitcher projects={projects.projects} activeContext={activeContext} onManage={() => setActive("Projects")} /><button className="wm-account" onClick={() => setActive("Passport")}>{passportUser ? `@${passportHandle || passportUser.email?.split("@")[0] || "member"}` : "Set up Passport"}</button><span className="presence"><i /> {hydrated ? "Saved on this device" : "Opening workspace"}</span><button className="ghost" onClick={() => setActive("Bulk Import")}>Import material</button><button className="gold" onClick={() => setActive("Writing Studio")}>Continue creating <b>→</b></button></div></header>
       <div className="notice" role="status"><span>✦</span>{notice}</div>
       {active === "Creator’s Home" && <CreatorHome notes={notes} draft={draft} wordCount={wordCount} organized={organized} wisdomMode={wisdomMode} creatorSeason={creatorSeason} onGo={setActive} onOrganize={organize} vault={visionVault} snapshots={snapshots} importBatches={importBatches} projectTitle={writingDocument?.title || null} />}
       {active === "Search" && <SearchView user={passportUser} onGo={setActive} />}
-      {active === "Vision Vault" && <VisionVaultView vault={visionVault} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} />}
+      {active === "Vision Vault" && <VisionVaultView vault={visionVault} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} includes={activeContext.includes} filtersOn={activeContext.filtersOn} contextLabel={contextLabel} onShowAll={activeContext.clear} />}
       {active === "Bulk Import" && <><BulkImport importText={importText} setImportText={setImportText} onAddText={importNotes} singleInput={fileInput} onSingleFile={handleFile} bulkInput={bulkFileInput} onFiles={chooseImportFiles} files={importFiles} label={importLabel} setLabel={setImportLabel} importing={importing} progress={importProgress} batches={importBatches} signedIn={Boolean(passportUser)} onStart={() => void uploadImportBatch()} onPassport={() => setActive("Passport")} /><DriveImportPanel user={passportUser} notify={setNotice} onImported={() => { const supabase = getSupabaseBrowserClient(); if (supabase) void supabase.from("dreamboard_import_batches").select("id, label, status, file_count, uploaded_count, failed_count, total_bytes, created_at").order("created_at", { ascending: false }).limit(8).then(({ data }) => { if (data) setImportBatches(data as ImportBatch[]); }); }} /><ImportProcessingPanel pipeline={importPipeline} batches={importBatches} signedIn={Boolean(passportUser)} /></>}
       {active === "Knowledge Vault" && <section className="view"><div className="view-heading split"><div><span className="eyebrow">YOUR SOURCE LIBRARY</span><h2>Knowledge Vault</h2><p>{notes.length} pieces of material, all still yours.</p></div><button className="gold" onClick={organize}>✦ Organize my notes</button></div>{organizeOpen && <OrganizeReview notes={notes} onApply={applyOrganize} onClose={() => setOrganizeOpen(false)} />}<label className="searchbox">⌕<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search your stories, research, reflections, and journal entries" /></label><div className="vault-list">{filtered.map(note => <article key={note.id}><div className="vault-icon">{note.kind === "Research" ? "⌘" : "✦"}</div><div><span>{note.kind} · {note.date}</span><h3>{note.title}</h3><p>{note.body}</p></div><div className="tag-stack">{note.tags.map(tag => <b key={tag}>{tag}</b>)}</div></article>)}{!filtered.length && <p className="empty-state">Nothing matched that search. Your original material remains safe in the vault.</p>}</div></section>}
       {active === "Creative Graph" && <CreativeGraphView graph={creativeGraph} signedIn={Boolean(passportUser)} onOpenSource={() => setActive("Knowledge Vault")} onVault={() => setActive("Knowledge Vault")} onPassport={() => setActive("Passport")} />}
@@ -338,7 +358,7 @@ export default function Dreamboard() {
       {active === "Audiobook Studio" && <AudiobookView user={passportUser} notify={setNotice} chapters={bookChapters.chapters} />}
       {active === "Passport" && <PassportView user={passportUser} email={passportEmail} setEmail={setPassportEmail} handle={passportHandle} setHandle={setPassportHandle} status={passportStatus} message={passportMessage} onSend={() => void sendPassportMagicLink()} onSave={() => void savePassportProfile()} onSignOut={() => void signOutPassport()} notify={setNotice} />}
       {active === "Publishing" && <PublishingView user={passportUser} notify={setNotice} projects={projects.projects} chapters={bookChapters.chapters} chapterTitle={chapterTitle} draft={draft} projectTitle={writingDocument?.title || "Untitled project"} displayName={displayName || passportHandle} />}
-      {active === "AI Studio" && <AIStudioView user={passportUser} notify={setNotice} wisdomEnabled={wisdomMode} context={{ projectTitle: writingDocument?.title || null, chapterTitle, draftExcerpt: draft, sources: notes.slice(0, 3).map(note => ({ title: note.title, excerpt: note.body })) }} runs={companionRuns} onRunSaved={run => setCompanionRuns(previous => [run, ...previous].slice(0, 20))} onAppendToDraft={text => setDraft(previous => previous ? `${previous}\n\n${text}` : text)} />}
+      {active === "AI Studio" && <AIStudioView user={passportUser} notify={setNotice} wisdomEnabled={wisdomMode} context={{ projectTitle: primaryProject?.title || writingDocument?.title || null, chapterTitle, draftExcerpt: draft, sources: notes.slice(0, 3).map(note => ({ title: note.title, excerpt: note.body })), projectInstructions: primaryProject?.ai_instructions || "", writingVoice: primaryProject?.writing_voice || "" }} runs={companionRuns} onRunSaved={run => setCompanionRuns(previous => [run, ...previous].slice(0, 20))} onAppendToDraft={text => setDraft(previous => previous ? `${previous}\n\n${text}` : text)} />}
       {active === "Lounge" && <LoungeView lounge={lounge} user={passportUser} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} />}
       {active === "Shop" && <Shop total={cartTotal} count={cartCount} onAdd={addToCart} items={shopProducts} status={communityStatus} />}
       {active === "Radio" && <Radio stream={radioStream} setStream={setRadioStream} playing={isPlaying} onToggle={toggleRadio} onPublish={publishRadio} audioRef={audio} status={communityStatus} />}

@@ -6,10 +6,10 @@ import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 
 export type VisionCaptureType = "text" | "voice" | "image" | "file" | "link" | "sketch" | "quick_capture";
 export type VisionStatus = "inbox" | "developing" | "incubating" | "ready_for_project" | "archived";
-export type VisionEntry = { id: string; title: string; content: string; capture_type: VisionCaptureType; status: VisionStatus; tags: string[]; created_at: string; updated_at: string; archived_at: string | null; local: boolean };
+export type VisionEntry = { id: string; title: string; content: string; capture_type: VisionCaptureType; status: VisionStatus; tags: string[]; project_id: string | null; created_at: string; updated_at: string; archived_at: string | null; local: boolean };
 
 const LOCAL_KEY = "dreamboard-vision-entries";
-const CLOUD_COLUMNS = "id,title,content,capture_type,status,tags,created_at,updated_at,archived_at";
+const CLOUD_COLUMNS = "id,title,content,capture_type,status,tags,project_id,created_at,updated_at,archived_at";
 const statusLabels: Array<[VisionStatus, string]> = [["inbox", "Inbox"], ["developing", "Developing"], ["incubating", "Incubating"], ["ready_for_project", "Ready for a project"], ["archived", "Archived"]];
 
 function deriveTitle(content: string) {
@@ -30,7 +30,7 @@ export type VisionVaultState = {
   secureToCloud: (id: string) => Promise<void>;
 };
 
-export function useVisionVault(user: User | null, notify: (message: string) => void): VisionVaultState {
+export function useVisionVault(user: User | null, notify: (message: string) => void, primaryProjectId: string | null = null): VisionVaultState {
   const [localEntries, setLocalEntries] = useState<VisionEntry[]>([]);
   const [cloudEntries, setCloudEntries] = useState<VisionEntry[]>([]);
   const [cloudState, setCloudState] = useState<VisionVaultState["cloudState"]>("local");
@@ -48,7 +48,7 @@ export function useVisionVault(user: User | null, notify: (message: string) => v
       setCloudState("loading");
       const { data, error } = await supabase.from("dreamboard_vision_entries").select(CLOUD_COLUMNS).order("updated_at", { ascending: false }).limit(500);
       if (error) { setCloudState("needs-setup"); return; }
-      setCloudEntries(((data || []) as Array<Omit<VisionEntry, "local">>).map(entry => ({ ...entry, tags: entry.tags || [], local: false })));
+      setCloudEntries(((data || []) as Array<Omit<VisionEntry, "local">>).map(entry => ({ ...entry, tags: entry.tags || [], project_id: entry.project_id ?? null, local: false })));
       setCloudState("ready");
     };
     void loadCloud();
@@ -63,10 +63,10 @@ export function useVisionVault(user: User | null, notify: (message: string) => v
     const now = new Date().toISOString();
     const title = deriveTitle(clean);
     if (supabase && user && cloudState !== "needs-setup") {
-      const { data, error } = await supabase.from("dreamboard_vision_entries").insert({ owner_id: user.id, title, content: clean, capture_type: captureType, source_type: captureType === "quick_capture" ? "quick_capture" : "manual" }).select(CLOUD_COLUMNS).single();
-      if (!error && data) { setCloudEntries(previous => [{ ...(data as Omit<VisionEntry, "local">), tags: (data as { tags: string[] | null }).tags || [], local: false }, ...previous]); notify("Captured to your private Vision Vault."); return; }
+      const { data, error } = await supabase.from("dreamboard_vision_entries").insert({ owner_id: user.id, title, content: clean, capture_type: captureType, source_type: captureType === "quick_capture" ? "quick_capture" : "manual", project_id: primaryProjectId }).select(CLOUD_COLUMNS).single();
+      if (!error && data) { setCloudEntries(previous => [{ ...(data as Omit<VisionEntry, "local">), tags: (data as { tags: string[] | null }).tags || [], project_id: (data as { project_id: string | null }).project_id ?? null, local: false }, ...previous]); notify("Captured to your private Vision Vault."); return; }
     }
-    setLocalEntries(previous => [{ id: `local-${Date.now()}`, title, content: clean, capture_type: captureType, status: "inbox", tags: [], created_at: now, updated_at: now, archived_at: null, local: true }, ...previous]);
+    setLocalEntries(previous => [{ id: `local-${Date.now()}`, title, content: clean, capture_type: captureType, status: "inbox", tags: [], project_id: primaryProjectId, created_at: now, updated_at: now, archived_at: null, local: true }, ...previous]);
     notify(user ? "Captured on this device. Dreamboard could not reach your cloud Vision Vault yet." : "Captured on this device. Sign in with your Passport to keep ideas in your private cloud vault.");
   };
 
@@ -95,9 +95,9 @@ export function useVisionVault(user: User | null, notify: (message: string) => v
     const supabase = getSupabaseBrowserClient();
     const entry = localEntries.find(item => item.id === id);
     if (!entry || !supabase || !user) return;
-    const { data, error } = await supabase.from("dreamboard_vision_entries").insert({ owner_id: user.id, title: entry.title, content: entry.content, capture_type: entry.capture_type, status: entry.status, source_type: "migration", tags: entry.tags }).select(CLOUD_COLUMNS).single();
+    const { data, error } = await supabase.from("dreamboard_vision_entries").insert({ owner_id: user.id, title: entry.title, content: entry.content, capture_type: entry.capture_type, status: entry.status, source_type: "migration", tags: entry.tags, project_id: entry.project_id }).select(CLOUD_COLUMNS).single();
     if (error || !data) { notify("This idea stays safe on this device. The cloud copy could not be saved yet."); return; }
-    setCloudEntries(previous => [{ ...(data as Omit<VisionEntry, "local">), tags: (data as { tags: string[] | null }).tags || [], local: false }, ...previous]);
+    setCloudEntries(previous => [{ ...(data as Omit<VisionEntry, "local">), tags: (data as { tags: string[] | null }).tags || [], project_id: (data as { project_id: string | null }).project_id ?? null, local: false }, ...previous]);
     setLocalEntries(previous => previous.filter(item => item.id !== id));
     notify("This idea is now secured in your private cloud Vision Vault.");
   };
@@ -115,7 +115,7 @@ export function QuickCaptureCard({ vault, onOpen }: { vault: VisionVaultState; o
   </section>;
 }
 
-export function VisionVaultView({ vault, signedIn, onPassport }: { vault: VisionVaultState; signedIn: boolean; onPassport: () => void }) {
+export function VisionVaultView({ vault, signedIn, onPassport, includes, filtersOn, contextLabel, onShowAll }: { vault: VisionVaultState; signedIn: boolean; onPassport: () => void; includes: (projectId: string | null | undefined) => boolean; filtersOn: boolean; contextLabel: string; onShowAll: () => void }) {
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<VisionStatus | "all">("all");
@@ -125,8 +125,9 @@ export function VisionVaultView({ vault, signedIn, onPassport }: { vault: Vision
 
   const activeCount = vault.entries.filter(entry => entry.status !== "archived").length;
   const visible = useMemo(() => vault.entries
+    .filter(entry => includes(entry.project_id))
     .filter(entry => statusFilter === "all" ? entry.status !== "archived" : entry.status === statusFilter)
-    .filter(entry => `${entry.title} ${entry.content}`.toLowerCase().includes(query.toLowerCase())), [vault.entries, statusFilter, query]);
+    .filter(entry => `${entry.title} ${entry.content}`.toLowerCase().includes(query.toLowerCase())), [vault.entries, statusFilter, query, includes]);
 
   const startEdit = (entry: VisionEntry) => { setEditingId(entry.id); setEditTitle(entry.title); setEditContent(entry.content); };
   const saveEdit = async () => { if (!editingId) return; await vault.updateEntry(editingId, { title: editTitle.trim() || "Untitled idea", content: editContent }); setEditingId(null); };
@@ -134,6 +135,7 @@ export function VisionVaultView({ vault, signedIn, onPassport }: { vault: Vision
 
   return <section className="view vision-view">
     <div className="view-heading split"><div><span className="eyebrow">YOUR OWN EMERGING MATERIAL · PRIVATE BY DEFAULT</span><h2>Vision Vault</h2><p>{activeCount ? `${activeCount} idea${activeCount === 1 ? "" : "s"} in motion. Nothing here is shared unless you choose to share it.` : "Ideas, dreams, goals, and sparks live here — separate from your research in the Knowledge Vault."}</p></div></div>
+    {filtersOn && <div className="context-banner"><span>◈ Showing {contextLabel}</span><button className="text-button" onClick={onShowAll}>Show all projects</button></div>}
     {vault.cloudState === "needs-setup" && <div className="connection-note"><b>Cloud vault setup needed:</b><span>Run supabase/dreamboard-vision-vault.sql in your Supabase project to enable the private cloud Vision Vault. Until then, captures stay on this device.</span></div>}
     <div className="input-card vision-capture"><label>CAPTURE AN IDEA<textarea value={draft} onChange={event => setDraft(event.target.value)} placeholder="A dream, a goal, an observation, an unfinished thought…" /></label><button className="gold" onClick={() => { void vault.addEntry(draft); setDraft(""); }} disabled={!draft.trim()}>Keep this idea <b>→</b></button></div>
     <div className="vision-filters" role="group" aria-label="Filter by status"><button className={statusFilter === "all" ? "season active" : "season"} onClick={() => setStatusFilter("all")}>All active</button>{statusLabels.map(([value, label]) => <button key={value} className={statusFilter === value ? "season active" : "season"} onClick={() => setStatusFilter(value)}>{label}</button>)}</div>

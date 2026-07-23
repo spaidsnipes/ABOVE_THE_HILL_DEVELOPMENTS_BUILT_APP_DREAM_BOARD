@@ -117,6 +117,15 @@ whenever a system changes tier.
   creator-managed remaining-work / blockers / deferred-ideas lists, version
   target, and a "ready to publish" action that unlocks only when every rule
   passes. Labeled "transparent rules, no AI judgment."
+- **Project Isolation + Active Context** (2026-07-23, Milestone 19) —
+  `lib/active-context.ts`: an active-context set of up to 7 projects (with a
+  primary), persisted, with a header switcher. New Vision Vault and Knowledge
+  Vault captures are stamped with the primary project; both vaults filter to
+  the active context with an explicit "Show all projects" escape hatch.
+  Per-project AI instructions + writing voice
+  (`supabase/dreamboard-project-isolation.sql`) are editable in the project
+  detail and fed into the Companion's system prompt. Default (no active
+  project) preserves the prior global behavior — nothing blends automatically.
 - **Project Templates** (2026-07-23, Milestone 18) — `lib/project-types.ts`:
   19 universal typed templates (Book, Research, Invention, Device, Film,
   Series, Podcast, Game, Virtual World, Comic, Music, Visual Art, Business,
