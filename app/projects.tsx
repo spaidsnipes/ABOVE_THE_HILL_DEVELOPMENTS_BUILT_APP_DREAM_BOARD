@@ -4,22 +4,24 @@ import { useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 import { CollaborationPanel, useCollaboration } from "./collaboration";
+import { PROJECT_TEMPLATES, templateForKind } from "../lib/project-types";
 
-export const PROJECT_TYPES = ["book", "memoir", "research", "script", "comic", "podcast", "music", "application", "website", "game", "business", "course", "nonprofit", "custom"] as const;
+// Legacy export retained for back-compat; the real registry is lib/project-types.ts.
+export const PROJECT_TYPES = PROJECT_TEMPLATES.map(template => template.slug);
 export const PROJECT_STATUSES = ["idea", "incubating", "planning", "active", "paused", "blocked", "review", "ready_to_publish", "published", "completed", "archived"] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
-export type Project = { id: string; title: string; kind: string; description: string; status: ProjectStatus; mission: string; intended_outcome: string; completion_definition: string; metadata: { next_action?: string; remaining_work?: string[]; blockers?: string[]; deferred_ideas?: string[]; version_target?: string }; created_at: string; updated_at: string; archived_at: string | null };
+export type Project = { id: string; title: string; kind: string; description: string; status: ProjectStatus; mission: string; intended_outcome: string; completion_definition: string; custom_type_label: string | null; metadata: { next_action?: string; remaining_work?: string[]; blockers?: string[]; deferred_ideas?: string[]; version_target?: string }; created_at: string; updated_at: string; archived_at: string | null };
 
-const FULL_COLUMNS = "id,title,kind,description,status,mission,intended_outcome,completion_definition,metadata,created_at,updated_at,archived_at";
+const FULL_COLUMNS = "id,title,kind,description,status,mission,intended_outcome,completion_definition,custom_type_label,metadata,created_at,updated_at,archived_at";
 const BASE_COLUMNS = "id,title,kind,created_at,updated_at";
 type BaseRow = Pick<Project, "id" | "title" | "kind" | "created_at" | "updated_at">;
-const fromBase = (row: BaseRow): Project => ({ ...row, description: "", status: "active", mission: "", intended_outcome: "", completion_definition: "", metadata: {}, archived_at: null });
+const fromBase = (row: BaseRow): Project => ({ ...row, description: "", status: "active", mission: "", intended_outcome: "", completion_definition: "", custom_type_label: null, metadata: {}, archived_at: null });
 
 export type ProjectsState = {
   projects: Project[];
   loadState: "local" | "loading" | "ready" | "needs-setup";
   extended: boolean;
-  createProject: (title: string, kind: string, description: string) => Promise<void>;
+  createProject: (title: string, kind: string, customLabel: string) => Promise<void>;
   updateProject: (id: string, patch: Partial<Omit<Project, "id" | "created_at" | "updated_at">>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   attachedCounts: Record<string, { vision: number; knowledge: number; documents: number }>;
@@ -65,12 +67,12 @@ export function useProjects(user: User | null, notify: (message: string) => void
     void load();
   }, [user]);
 
-  const createProject = async (title: string, kind: string, description: string) => {
+  const createProject = async (title: string, kind: string, customLabel: string) => {
     const supabase = getSupabaseBrowserClient();
     const cleanTitle = title.trim();
     if (!supabase || !user || !cleanTitle) return;
     if (extended) {
-      const { data, error } = await supabase.from("dreamboard_projects").insert({ owner_id: user.id, title: cleanTitle.slice(0, 160), kind, description: description.trim(), status: "idea" }).select(FULL_COLUMNS).single();
+      const { data, error } = await supabase.from("dreamboard_projects").insert({ owner_id: user.id, title: cleanTitle.slice(0, 160), kind, custom_type_label: kind === "custom" ? (customLabel.trim().slice(0, 60) || "Custom Project") : null, status: "idea" }).select(FULL_COLUMNS).single();
       if (error || !data) { notify("Dreamboard could not create that project yet. Please try again."); return; }
       setProjects(previous => [{ ...(data as Project), metadata: (data as Project).metadata || {} }, ...previous]);
     } else {
@@ -123,7 +125,9 @@ function ProjectEditor({ project, state, hasDocument, onWrite, chaptersComplete,
   const [nextAction, setNextAction] = useState(project.metadata.next_action || "");
   const dirty = description !== project.description || mission !== project.mission || outcome !== project.intended_outcome || done !== project.completion_definition || nextAction !== (project.metadata.next_action || "");
   const save = () => void state.updateProject(project.id, { description, mission, intended_outcome: outcome, completion_definition: done, metadata: { ...project.metadata, next_action: nextAction } });
+  const template = templateForKind(project.kind, project.custom_type_label);
   return <>
+    <p className="template-tools detail"><b>{template.icon} {template.label}</b> · this project&rsquo;s workspace: {template.tools.join(" · ")}</p>
     <label>DESCRIPTION<textarea value={description} onChange={event => setDescription(event.target.value)} placeholder="What this project is, in your own words." /></label>
     <div className="project-detail-grid">
       <label>MISSION<textarea value={mission} onChange={event => setMission(event.target.value)} placeholder="Why this work matters." /></label>
@@ -190,7 +194,8 @@ function FinishingPanel({ project, state, chaptersComplete, chaptersTotal, wordC
 
 export function ProjectsView({ state, signedIn, hasDocument, onPassport, onWrite, chaptersComplete, chaptersTotal, wordCount, user, viewerLabel, notify }: { state: ProjectsState; signedIn: boolean; hasDocument: boolean; onPassport: () => void; onWrite: () => void; chaptersComplete: number; chaptersTotal: number; wordCount: number; user: User | null; viewerLabel: string; notify: (message: string) => void }) {
   const [title, setTitle] = useState("");
-  const [kind, setKind] = useState("book");
+  const [kind, setKind] = useState("general");
+  const [customLabel, setCustomLabel] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -202,10 +207,16 @@ export function ProjectsView({ state, signedIn, hasDocument, onPassport, onWrite
     <div className="view-heading split"><div><span className="eyebrow">YOUR CREATIONS · PRIVATE BY DEFAULT</span><h2>Projects</h2><p>{state.projects.length ? `${state.projects.length} project${state.projects.length === 1 ? "" : "s"} under your Passport. Each one carries its own purpose and definition of done.` : "A project is a container for real work — a book, a business, a course. Create the first one when you're ready."}</p></div><button className="ghost" onClick={() => { setShowArchived(previous => !previous); setOpenId(null); }}>{showArchived ? "Show active" : "Show archived"}</button></div>
     {state.loadState === "needs-setup" && <div className="connection-note"><b>Projects setup needed:</b><span>Run supabase/dreamboard-core-schema.sql (and dreamboard-project-model.sql) in your Supabase project.</span></div>}
     {state.loadState === "ready" && !state.extended && <div className="connection-note"><b>Project model migration available:</b><span>Run supabase/dreamboard-project-model.sql to enable status, mission, and completion definitions. Until then, projects are title-and-type only.</span></div>}
-    <div className="input-card project-create"><label>NEW PROJECT TITLE<input value={title} onChange={event => setTitle(event.target.value)} maxLength={160} placeholder="The honest name for the work" /></label><div className="project-create-row"><label className="vision-status">TYPE<select value={kind} onChange={event => setKind(event.target.value)}>{PROJECT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}</select></label><button className="gold" onClick={() => { void state.createProject(title, kind, ""); setTitle(""); }} disabled={!title.trim() || state.loadState !== "ready"}>Create project <b>→</b></button></div></div>
+    <div className="input-card project-create">
+      <label>NEW PROJECT TITLE<input value={title} onChange={event => setTitle(event.target.value)} maxLength={160} placeholder="The honest name for the work" /></label>
+      <div className="template-picker" role="radiogroup" aria-label="Project type">{PROJECT_TEMPLATES.map(template => <button key={template.slug} type="button" role="radio" aria-checked={kind === template.slug} className={kind === template.slug ? "template-choice selected" : "template-choice"} onClick={() => setKind(template.slug)} title={template.description}><i>{template.icon}</i><span>{template.label}</span></button>)}<button type="button" role="radio" aria-checked={kind === "custom"} className={kind === "custom" ? "template-choice selected" : "template-choice"} onClick={() => setKind("custom")} title="Define your own project type"><i>✺</i><span>Custom</span></button></div>
+      {kind === "custom" && <label>CUSTOM TYPE NAME<input value={customLabel} onChange={event => setCustomLabel(event.target.value)} maxLength={60} placeholder="e.g. Field Notebook, Screenplay Bible" /></label>}
+      <p className="template-tools">Workspace: {templateForKind(kind, customLabel).tools.join(" · ")}</p>
+      <div className="project-create-row"><button className="gold" onClick={() => { void state.createProject(title, kind, customLabel); setTitle(""); setCustomLabel(""); }} disabled={!title.trim() || (kind === "custom" && !customLabel.trim()) || state.loadState !== "ready"}>Create project <b>→</b></button></div>
+    </div>
     <div className="project-list">
       {visible.map(project => { const counts = state.attachedCounts[project.id] || { vision: 0, knowledge: 0, documents: 0 }; const isOpen = openId === project.id; return <article key={project.id} className={isOpen ? "project-card open" : "project-card"}>
-        <button className="project-summary" onClick={() => setOpenId(isOpen ? null : project.id)} aria-expanded={isOpen}><div><span className="eyebrow">{project.kind.toUpperCase()} · {project.status.replace(/_/g, " ").toUpperCase()}</span><h3>{project.title}</h3>{project.description && !isOpen && <p>{project.description.slice(0, 140)}</p>}</div><small>{counts.documents} doc{counts.documents === 1 ? "" : "s"} · {counts.vision} idea{counts.vision === 1 ? "" : "s"} · {counts.knowledge} source{counts.knowledge === 1 ? "" : "s"}</small></button>
+        <button className="project-summary" onClick={() => setOpenId(isOpen ? null : project.id)} aria-expanded={isOpen}><div><span className="eyebrow">{templateForKind(project.kind, project.custom_type_label).icon} {templateForKind(project.kind, project.custom_type_label).label.toUpperCase()} · {project.status.replace(/_/g, " ").toUpperCase()}</span><h3>{project.title}</h3>{project.description && !isOpen && <p>{project.description.slice(0, 140)}</p>}</div><small>{counts.documents} doc{counts.documents === 1 ? "" : "s"} · {counts.vision} idea{counts.vision === 1 ? "" : "s"} · {counts.knowledge} source{counts.knowledge === 1 ? "" : "s"}</small></button>
         {isOpen && <div className="project-detail">
           {state.extended ? <ProjectEditor key={project.id} project={project} state={state} hasDocument={hasDocument} onWrite={onWrite} chaptersComplete={chaptersComplete} chaptersTotal={chaptersTotal} wordCount={wordCount} user={user} viewerLabel={viewerLabel} notify={notify} /> : <p className="empty-state">Run the project-model migration to edit mission, status, and completion definition here.</p>}
         </div>}

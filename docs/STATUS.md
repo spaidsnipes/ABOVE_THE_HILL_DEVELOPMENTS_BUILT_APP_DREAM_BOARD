@@ -117,6 +117,15 @@ whenever a system changes tier.
   creator-managed remaining-work / blockers / deferred-ideas lists, version
   target, and a "ready to publish" action that unlocks only when every rule
   passes. Labeled "transparent rules, no AI judgment."
+- **Project Templates** (2026-07-23, Milestone 18) — `lib/project-types.ts`:
+  19 universal typed templates (Book, Research, Invention, Device, Film,
+  Series, Podcast, Game, Virtual World, Comic, Music, Visual Art, Business,
+  Nonprofit, Course, Personal Archive, Family Legacy, Poetry, General) plus
+  custom types with a label. Each maps to a tool/view set (base tools +
+  type-specific). Create form is a template picker; project detail shows its
+  workspace tools. `custom_type_label` column
+  (`supabase/dreamboard-project-types.sql`); legacy slugs resolve to valid
+  templates. Unit-tested (`tests/project-types.test.mjs`).
 - **Projects** (2026-07-22) — real multi-project support in
   `app/projects.tsx`: create/edit/archive/restore/delete-with-confirm,
   full lifecycle statuses (idea → … → completed/archived), mission /
