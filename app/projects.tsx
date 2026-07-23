@@ -10,12 +10,12 @@ import { PROJECT_TEMPLATES, templateForKind } from "../lib/project-types";
 export const PROJECT_TYPES = PROJECT_TEMPLATES.map(template => template.slug);
 export const PROJECT_STATUSES = ["idea", "incubating", "planning", "active", "paused", "blocked", "review", "ready_to_publish", "published", "completed", "archived"] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
-export type Project = { id: string; title: string; kind: string; description: string; status: ProjectStatus; mission: string; intended_outcome: string; completion_definition: string; custom_type_label: string | null; metadata: { next_action?: string; remaining_work?: string[]; blockers?: string[]; deferred_ideas?: string[]; version_target?: string }; created_at: string; updated_at: string; archived_at: string | null };
+export type Project = { id: string; title: string; kind: string; description: string; status: ProjectStatus; mission: string; intended_outcome: string; completion_definition: string; custom_type_label: string | null; ai_instructions: string; writing_voice: string; metadata: { next_action?: string; remaining_work?: string[]; blockers?: string[]; deferred_ideas?: string[]; version_target?: string }; created_at: string; updated_at: string; archived_at: string | null };
 
-const FULL_COLUMNS = "id,title,kind,description,status,mission,intended_outcome,completion_definition,custom_type_label,metadata,created_at,updated_at,archived_at";
+const FULL_COLUMNS = "id,title,kind,description,status,mission,intended_outcome,completion_definition,custom_type_label,ai_instructions,writing_voice,metadata,created_at,updated_at,archived_at";
 const BASE_COLUMNS = "id,title,kind,created_at,updated_at";
 type BaseRow = Pick<Project, "id" | "title" | "kind" | "created_at" | "updated_at">;
-const fromBase = (row: BaseRow): Project => ({ ...row, description: "", status: "active", mission: "", intended_outcome: "", completion_definition: "", custom_type_label: null, metadata: {}, archived_at: null });
+const fromBase = (row: BaseRow): Project => ({ ...row, description: "", status: "active", mission: "", intended_outcome: "", completion_definition: "", custom_type_label: null, ai_instructions: "", writing_voice: "", metadata: {}, archived_at: null });
 
 export type ProjectsState = {
   projects: Project[];
@@ -123,8 +123,10 @@ function ProjectEditor({ project, state, hasDocument, onWrite, chaptersComplete,
   const [outcome, setOutcome] = useState(project.intended_outcome);
   const [done, setDone] = useState(project.completion_definition);
   const [nextAction, setNextAction] = useState(project.metadata.next_action || "");
-  const dirty = description !== project.description || mission !== project.mission || outcome !== project.intended_outcome || done !== project.completion_definition || nextAction !== (project.metadata.next_action || "");
-  const save = () => void state.updateProject(project.id, { description, mission, intended_outcome: outcome, completion_definition: done, metadata: { ...project.metadata, next_action: nextAction } });
+  const [aiInstructions, setAiInstructions] = useState(project.ai_instructions);
+  const [writingVoice, setWritingVoice] = useState(project.writing_voice);
+  const dirty = description !== project.description || mission !== project.mission || outcome !== project.intended_outcome || done !== project.completion_definition || nextAction !== (project.metadata.next_action || "") || aiInstructions !== project.ai_instructions || writingVoice !== project.writing_voice;
+  const save = () => void state.updateProject(project.id, { description, mission, intended_outcome: outcome, completion_definition: done, ai_instructions: aiInstructions, writing_voice: writingVoice, metadata: { ...project.metadata, next_action: nextAction } });
   const template = templateForKind(project.kind, project.custom_type_label);
   return <>
     <p className="template-tools detail"><b>{template.icon} {template.label}</b> · this project&rsquo;s workspace: {template.tools.join(" · ")}</p>
@@ -134,6 +136,8 @@ function ProjectEditor({ project, state, hasDocument, onWrite, chaptersComplete,
       <label>INTENDED OUTCOME<textarea value={outcome} onChange={event => setOutcome(event.target.value)} placeholder="What exists in the world when it ships." /></label>
       <label>DEFINITION OF DONE<textarea value={done} onChange={event => setDone(event.target.value)} placeholder="The honest checklist for calling it complete." /></label>
       <label>CURRENT NEXT ACTION<input value={nextAction} onChange={event => setNextAction(event.target.value)} placeholder="The next faithful step." /></label>
+      <label>PROJECT AI INSTRUCTIONS<textarea value={aiInstructions} onChange={event => setAiInstructions(event.target.value)} placeholder="How the Companion should work in this project (tone, boundaries, domain)." /></label>
+      <label>WRITING VOICE<textarea value={writingVoice} onChange={event => setWritingVoice(event.target.value)} placeholder="This project&rsquo;s voice: vocabulary, rhythm, what to preserve." /></label>
     </div>
     <div className="vision-actions">
       <button className="gold" onClick={save} disabled={!dirty}>{dirty ? "Save project details" : "Saved"}</button>

@@ -45,7 +45,7 @@ export function routeRequest(prompt: string, wisdomEnabled: boolean, pinnedSkill
   return { skills, mode, rationale };
 }
 
-export type CompanionContext = { projectTitle: string | null; chapterTitle: string | null; draftExcerpt: string; sources: Array<{ title: string; excerpt: string }> };
+export type CompanionContext = { projectTitle: string | null; chapterTitle: string | null; draftExcerpt: string; sources: Array<{ title: string; excerpt: string }>; projectInstructions?: string; writingVoice?: string };
 
 const CATEGORY_MARKERS: Array<[string, OutputCategory]> = [
   ["[EVIDENCE]", "evidence"], ["[INTERPRETATION]", "interpretation"], ["[INFERENCE]", "inference"],
@@ -56,10 +56,12 @@ const CATEGORY_MARKERS: Array<[string, OutputCategory]> = [
 export function buildMessages(prompt: string, route: CompanionRoute, context: CompanionContext): { system: string; user: string } {
   const system = [
     "You are Dreamboard's Creative Companion. You help the creator think, organize, and improve clarity while preserving their authorship and voice. You never claim to have changed their work and never invent source material.",
+    context.projectInstructions ? `Project instructions from the creator: ${context.projectInstructions}` : "",
+    context.writingVoice ? `Preserve this project's writing voice: ${context.writingVoice}` : "",
     `Active skills: ${route.skills.map(skill => `${skill.name} — ${skill.instruction}`).join(" | ")}`,
     `Working mode: ${route.mode.name} — ${route.mode.instruction}`,
     "Label every section of your reply by starting its line with exactly one of: [EVIDENCE] [INTERPRETATION] [INFERENCE] [SPECULATION] [RECOMMENDATION] [CREATIVE SUGGESTION] [GENERATED DRAFT]. Only use [EVIDENCE] for things directly present in the provided material.",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
   const user = [
     prompt,
     context.projectTitle ? `\nProject: ${context.projectTitle}` : "",
