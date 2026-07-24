@@ -29,6 +29,7 @@ community → import → vision-vault.
 | `dreamboard_equations` | corrections-equations | Equation Lab: expression, variables, units, assumptions, validation status |
 | `dreamboard_claims` | research-workspace | Claims with evidence class, sources, objections, confidence, verification |
 | `dreamboard_chapters` | book-architect | Real chapter outline: part, title, purpose, notes, status, sort order |
+| `dreamboard_project_links` | constellation | Manual user-drawn relationships between projects |
 | `dreamboard_project_members` | collaboration | Members/invitations: role, status, invited_email (RLS via SECURITY DEFINER helpers, ADR-0006) |
 | `dreamboard_project_comments` | collaboration | Project comments + review requests |
 | `dreamboard_project_activity` | collaboration | Per-project activity feed |
