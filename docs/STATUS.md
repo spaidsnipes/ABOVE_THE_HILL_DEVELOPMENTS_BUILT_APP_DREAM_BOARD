@@ -49,6 +49,13 @@ whenever a system changes tier.
   where the creator approves theme groups before anything is applied.
   Approved themes are added alongside original tags (never replacing them)
   and synced to cloud vault entries where possible.
+- **Time Machine + Legacy Library** (2026-07-23, Milestone 25) —
+  `app/legacy.tsx`, a read-view over existing real data (no new tables), new
+  "Legacy" nav item with two tabs. Time Machine: "On This Day" resurfacing of
+  earlier ideas (month/day match), project-evolution history (started / last
+  touched / status), and earlier drafts — framed gently, never as a scoreboard
+  or shame for unfinished work. Legacy Library: completed/published projects
+  and the full export history (`dreamboard_exports`).
 - **Constellation View** (2026-07-23, Milestone 24) — `app/constellation.tsx`
   + `supabase/dreamboard-constellation.sql`: a navigable ecosystem map where
   each real project is a star sized by its actual attached material

@@ -22,12 +22,13 @@ import { PublishingView } from "./publishing";
 import { ResearchView, useResearch } from "./research";
 import { useCorrections, useEquations } from "./corrections-equations";
 import { ConstellationView, useConstellation } from "./constellation";
+import { LegacyView, useLegacy } from "./legacy";
 import { LoungeView, useLounge } from "./lounge";
 import { useActiveContext, MAX_ACTIVE } from "../lib/active-context";
 
 type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[]; cloudId?: string; projectId?: string | null };
 type Snapshot = { id: number; label: string; body: string; chapter: number; date: string; words: number };
-type ActiveView = "Creator’s Home" | "Search" | "Creator Compass" | "Projects" | "Bulk Import" | "Vision Vault" | "Knowledge Vault" | "Creative Graph" | "Constellation" | "Book Architect" | "Research" | "Writing Studio" | "Creative Timeline" | "Creation Journal" | "Version History" | "Reader" | "Audiobook Studio" | "Publishing" | "AI Studio" | "Passport" | "Lounge" | "Shop" | "Radio" | "Settings";
+type ActiveView = "Creator’s Home" | "Search" | "Creator Compass" | "Projects" | "Bulk Import" | "Vision Vault" | "Knowledge Vault" | "Creative Graph" | "Constellation" | "Book Architect" | "Research" | "Writing Studio" | "Creative Timeline" | "Legacy" | "Creation Journal" | "Version History" | "Reader" | "Audiobook Studio" | "Publishing" | "AI Studio" | "Passport" | "Lounge" | "Shop" | "Radio" | "Settings";
 type CreatorSeason = "planting" | "growing" | "building" | "blooming" | "harvest" | "stewardship" | "new-seeds";
 type DreamTheme = "emerald-gold" | "midnight-gold" | "violet-gold" | "blue-gold";
 type ImportBatch = { id: string; label: string; status: string; file_count: number; uploaded_count: number; failed_count: number; total_bytes: number; created_at: string };
@@ -36,7 +37,7 @@ type WritingDocument = { id: string; title: string; chapter_number: number; body
 
 const initialNotes: Note[] = [];
 const starterDraft = "";
-const nav: Array<[string, ActiveView]> = [["⌂", "Creator’s Home"], ["⌖", "Search"], ["◇", "Passport"], ["✧", "Creator Compass"], ["▦", "Projects"], ["⇧", "Bulk Import"], ["✧", "Vision Vault"], ["⌕", "Knowledge Vault"], ["⌬", "Creative Graph"], ["✺", "Constellation"], ["✦", "Book Architect"], ["⌗", "Research"], ["✎", "Writing Studio"], ["◫", "Version History"], ["▤", "Reader"], ["◉", "Audiobook Studio"], ["⇪", "Publishing"], ["◷", "Creative Timeline"], ["◫", "Creation Journal"], ["✦", "AI Studio"], ["◉", "Lounge"], ["▣", "Shop"], ["◌", "Radio"]];
+const nav: Array<[string, ActiveView]> = [["⌂", "Creator’s Home"], ["⌖", "Search"], ["◇", "Passport"], ["✧", "Creator Compass"], ["▦", "Projects"], ["⇧", "Bulk Import"], ["✧", "Vision Vault"], ["⌕", "Knowledge Vault"], ["⌬", "Creative Graph"], ["✺", "Constellation"], ["✦", "Book Architect"], ["⌗", "Research"], ["✎", "Writing Studio"], ["◫", "Version History"], ["▤", "Reader"], ["◉", "Audiobook Studio"], ["⇪", "Publishing"], ["◷", "Creative Timeline"], ["❦", "Legacy"], ["◫", "Creation Journal"], ["✦", "AI Studio"], ["◉", "Lounge"], ["▣", "Shop"], ["◌", "Radio"]];
 const shopItems: Array<{ id: string; name: string; kind: string; price: number; note: string }> = [];
 const wowWorldUrl = "https://wealthymindsets-pro.vercel.app";
 
@@ -121,6 +122,7 @@ export default function Dreamboard() {
   const corrections = useCorrections(passportUser, activeContextEarly.primaryId, displayName || passportHandle || "Creator", setNotice);
   const equations = useEquations(passportUser, activeContextEarly.primaryId, setNotice);
   const constellation = useConstellation(passportUser, setNotice);
+  const legacy = useLegacy(passportUser);
   const lounge = useLounge(passportUser, displayName || passportHandle || (passportUser?.email?.split("@")[0] ?? "Creator"), setNotice);
   const bookChapters = useChapters(passportUser, setNotice);
   const importPipeline = useImportPipeline(passportUser, setNotice);
@@ -374,6 +376,7 @@ export default function Dreamboard() {
       {active === "Audiobook Studio" && <AudiobookView user={passportUser} notify={setNotice} chapters={bookChapters.chapters} />}
       {active === "Passport" && <PassportView user={passportUser} email={passportEmail} setEmail={setPassportEmail} handle={passportHandle} setHandle={setPassportHandle} status={passportStatus} message={passportMessage} onSend={() => void sendPassportMagicLink()} onSave={() => void savePassportProfile()} onSignOut={() => void signOutPassport()} notify={setNotice} />}
       {active === "Publishing" && <PublishingView user={passportUser} notify={setNotice} projects={projects.projects} chapters={bookChapters.chapters} chapterTitle={chapterTitle} draft={draft} projectTitle={writingDocument?.title || "Untitled project"} displayName={displayName || passportHandle} />}
+      {active === "Legacy" && <LegacyView legacy={legacy} projects={projects.projects} visionEntries={visionVault.entries} snapshots={snapshots} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} onGo={setActive} />}
       {active === "AI Studio" && <AIStudioView user={passportUser} notify={setNotice} wisdomEnabled={wisdomMode} context={{ projectTitle: primaryProject?.title || writingDocument?.title || null, chapterTitle, draftExcerpt: draft, sources: notes.slice(0, 3).map(note => ({ title: note.title, excerpt: note.body })), projectInstructions: primaryProject?.ai_instructions || "", writingVoice: primaryProject?.writing_voice || "" }} runs={companionRuns} onRunSaved={run => setCompanionRuns(previous => [run, ...previous].slice(0, 20))} onAppendToDraft={text => setDraft(previous => previous ? `${previous}\n\n${text}` : text)} />}
       {active === "Lounge" && <LoungeView lounge={lounge} user={passportUser} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} />}
       {active === "Shop" && <Shop total={cartTotal} count={cartCount} onAdd={addToCart} items={shopProducts} status={communityStatus} />}
