@@ -245,3 +245,6 @@
 .context-row .text-button.primary{opacity:1;color:#a57628;font-weight:600}
 .context-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 14px;margin-bottom:12px;border:1px solid rgba(165,118,40,.3);border-radius:11px;background:rgba(255,249,233,.55);font-size:12px}
 .theme-midnight-gold .context-banner,.theme-violet-gold .context-banner,.theme-blue-gold .context-banner{background:rgba(223,189,103,.08)}
+
+/* Persona picker label */
+.persona-pick-label{display:block;margin:10px 0 2px}
