@@ -49,6 +49,15 @@ whenever a system changes tier.
   where the creator approves theme groups before anything is applied.
   Approved themes are added alongside original tags (never replacing them)
   and synced to cloud vault entries where possible.
+- **Research Workspace** (2026-07-23, Milestone 22) — `app/research.tsx` +
+  `lib/research.ts` + `supabase/dreamboard-research-workspace.sql`: per-project
+  research questions (open/investigating/answered/parked) and a claim system
+  with the directive's full 13-class evidence taxonomy (established → …
+  → needs_verification → rejected, humble-first), claim type, sources (real
+  only), supporting evidence, objections, alternatives, confidence, and
+  verification status. Scoped to the active project (never blends across work);
+  a claim's evidence class is only ever what the creator set — nothing is
+  upgraded automatically. New "Research" nav item. Unit-tested taxonomy.
 - **Persona & Skill Architecture** (2026-07-23, Milestone 20) — `lib/companion.ts`
   now defines the **25 master personas** (each a transparent config: role,
   domain, reasoning style, tone, skills, safety) + a **30-skill registry**,
