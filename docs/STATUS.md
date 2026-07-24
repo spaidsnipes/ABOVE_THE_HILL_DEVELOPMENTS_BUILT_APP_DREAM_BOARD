@@ -49,6 +49,14 @@ whenever a system changes tier.
   where the creator approves theme groups before anything is applied.
   Approved themes are added alongside original tags (never replacing them)
   and synced to cloud vault entries where possible.
+- **Constellation View** (2026-07-23, Milestone 24) — `app/constellation.tsx`
+  + `supabase/dreamboard-constellation.sql`: a navigable ecosystem map where
+  each real project is a star sized by its actual attached material
+  (vision + knowledge + documents), with pan/zoom, keyboard-focusable stars,
+  click-to-focus (sets the active primary project), open-in-Projects, and
+  manual user-drawn cross-project links (`dreamboard_project_links`, 5
+  relationship types) — no relationship is ever invented. New "Constellation"
+  nav item.
 - **Correction Ledger + Equation Lab** (2026-07-23, Milestone 23) —
   `app/corrections-equations.tsx` + `supabase/dreamboard-corrections-equations.sql`,
   as tabs inside the Research Workspace. Correction Ledger is permanent and
