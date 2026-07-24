@@ -248,3 +248,18 @@
 
 /* Persona picker label */
 .persona-pick-label{display:block;margin:10px 0 2px}
+
+/* Responsive shell: readable at split-screen widths (recording P1) */
+@media(max-width:920px){
+  .os-shell .view-heading h2,.os-shell .hero h2{font-size:clamp(28px,6vw,42px)!important;letter-spacing:-1px!important}
+  .os-shell header{flex-wrap:wrap;gap:10px}
+  .os-shell .header-actions{flex-wrap:wrap;gap:8px}
+  .os-shell .writing-toolbar{flex-wrap:wrap;gap:10px}
+  .os-shell .writing-toolbar h2{font-size:clamp(20px,5vw,32px)}
+  .os-shell .writing-toolbar>div:last-child{flex-wrap:wrap}
+}
+@media(max-width:620px){
+  .os-shell .view-heading h2,.os-shell .hero h2{font-size:clamp(24px,7vw,32px)!important}
+  .os-shell .context-switch-wrap{order:-1;width:100%}
+  .os-shell .context-menu{width:min(320px,92vw)}
+}
