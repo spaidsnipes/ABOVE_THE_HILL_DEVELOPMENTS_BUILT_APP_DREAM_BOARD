@@ -49,6 +49,15 @@ whenever a system changes tier.
   where the creator approves theme groups before anything is applied.
   Approved themes are added alongside original tags (never replacing them)
   and synced to cloud vault entries where possible.
+- **Persona & Skill Architecture** (2026-07-23, Milestone 20) — `lib/companion.ts`
+  now defines the **25 master personas** (each a transparent config: role,
+  domain, reasoning style, tone, skills, safety) + a **30-skill registry**,
+  composable (pin up to 3, or keyword-routed), with the active personas always
+  shown and per-persona safety carried into the system prompt. Resolves the
+  older Bible's "30 skills/30 personas" against this directive's "25 personas +
+  skill registry" in favor of the newer spec (25 + registry). Output stays
+  category-labeled; voice protection unchanged. Unit-tested
+  (`tests/companion.test.mjs`).
 - **Creative Companion foundation** (2026-07-22) — `lib/companion.ts` +
   `app/ai-studio.tsx`: 10 typed skills with behaviors, 6 working modes,
   deterministic router with stated rationale, pinnable skills, opt-in

@@ -79,7 +79,15 @@ active-context selection. No training on private content.
 | 22 | Correction Ledger + Equation Lab | permanent corrections; equations with units/validation status |
 | 23 | Constellation View | navigable multi-project graph, ecosystem→note zoom |
 | 24 | Time Machine + Legacy Library | On This Day / evolution; finished-work archive |
-| 25 | Project Memory + Creative Health + Imagine/Reality modes | inspectable memory; gentle patterns; mode switch |
+| 25 | Time Machine + Legacy Library | On This Day / evolution; finished-work archive |
+| 26 | Project Memory + Creative Health | inspectable/editable memory; gentle patterns, disable-able |
+| 27 | Imagination Mode + Reality Check + mode switch | Imagine/Build/Research/Challenge/Refine/Publish, labeled outputs |
+| 28 | Voice Learning | Voice Guardian samples, confidence, quote vs imitation |
+| 29 | Guest→Passport migration + accessibility pass | safe migration preview; contrast/focus/labels; route scroll reset |
+| 30 | Completion audit + polish | replay journeys, remove/mark any placeholder, consolidate docs |
+
+Milestone 21 folds in the recording-driven P1 defects (project-context
+truthfulness, route scroll reset on nav, responsive split-screen header/title).
 
 Each milestone: real production code, a safe migration, tests, browser
 verification, docs, and a clean merged checkpoint before the next. No
