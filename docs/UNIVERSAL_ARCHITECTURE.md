@@ -10,6 +10,17 @@ This document is the durable plan for evolving the existing (already generic)
 architecture toward that vision. It complements [CLAUDE.md](../CLAUDE.md)
 (rules), [STATUS.md](STATUS.md) (reality), and [DATA_MODEL.md](DATA_MODEL.md).
 
+## Authoritative source & resolved conflicts
+
+The July-2026 implementation directive is the newest authoritative source; where
+older docs conflict, it wins. Resolved conflicts: (1) personas — 25 master
+personas + a separate composable skill registry (not 30 overlapping personas),
+implemented in M20; (2) appearance — the two headline modes are **Dawn Paper**
+and **Midnight Garden** with a Reduce Motion setting (visual-polish pass), while
+the older `midnight-gold/violet-gold/blue-gold` themes remain as secondary
+options for back-compat. Reduce-motion persists localStorage-first; cloud
+persistence needs `dreamboard-appearance.sql`.
+
 ## Guiding principles (condensed)
 
 Learn the creator, not just their prose · preserve source + provenance · never

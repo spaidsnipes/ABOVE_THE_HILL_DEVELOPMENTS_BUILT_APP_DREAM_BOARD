@@ -49,6 +49,17 @@ whenever a system changes tier.
   where the creator approves theme groups before anything is applied.
   Approved themes are added alongside original tags (never replacing them)
   and synced to cloud vault entries where possible.
+- **Visual polish pass** (2026-07-23) — appearance system per the July-2026
+  visual directive: two headline modes **Dawn Paper** (cream/emerald/gold) and
+  **Midnight Garden** (deep luminous emerald, softened ivory, muted gold), plus
+  a **Reduce Motion** setting. A motion-gated ambient background layer (slow
+  drifting gold/emerald glows, behind content, edges only, z-index 0 under the
+  z-index-1 rail/stage) honors both the Reduce Motion toggle and
+  `prefers-reduced-motion`. Theme + reduce-motion persist to localStorage
+  (works signed-out) and, when the appearance migration is run, to the profile
+  (`supabase/dreamboard-appearance.sql` extends the theme check + adds
+  reduce_motion). Long-form surfaces stay quiet: writer 18px/1.78, reader 1.85.
+  Real-data-only empty states preserved.
 - **Time Machine + Legacy Library** (2026-07-23, Milestone 25) —
   `app/legacy.tsx`, a read-view over existing real data (no new tables), new
   "Legacy" nav item with two tabs. Time Machine: "On This Day" resurfacing of

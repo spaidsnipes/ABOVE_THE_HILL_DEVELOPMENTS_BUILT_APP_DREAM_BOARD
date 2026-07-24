@@ -300,3 +300,22 @@
 .legacy-view .home-card{margin-bottom:14px;display:grid;gap:8px}
 .legacy-view .research-list article{gap:2px}
 .legacy-view .research-list small{opacity:.65;font-size:11px}
+
+/* ── Visual polish: Midnight Garden theme, ambient layer, reduce motion ── */
+.os-shell.theme-midnight-garden{--ink:#e8efe6;--forest:#17553f;--forest2:#0d3527;--gold:#cba24e;--cream:#0d251b;--muted:#7f978c;--line:rgba(90,160,128,.2);color:#e8efe6;background:radial-gradient(circle at 70% -14%,#1c6349 0,transparent 44%),radial-gradient(circle at 6% 42%,rgba(22,84,62,.4),transparent 34%),linear-gradient(160deg,#0a2019 0%,#0c2a20 55%,#0a1d16 100%)}
+.os-shell.theme-midnight-garden .rail{background:linear-gradient(180deg,rgba(12,40,30,.82),rgba(9,30,23,.9));border-color:rgba(90,160,128,.16)}
+.os-shell.theme-midnight-garden header h1,.os-shell.theme-midnight-garden .view-heading h2,.os-shell.theme-midnight-garden .hero h2{color:#f2f6ef}
+.os-shell.theme-midnight-garden .view-heading h2 em,.os-shell.theme-midnight-garden .hero h2 em{color:#e0be68}
+.theme-choice.midnight-garden i{background:linear-gradient(135deg,#0d3527,#1c6349 55%,#cba24e)}
+
+/* Ambient background — luminous, slow, edges only, never over text bodies */
+.ambient{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.os-shell>.rail,.os-shell>.stage{position:relative;z-index:1}
+.ambient i{position:absolute;border-radius:50%;filter:blur(64px);opacity:.5;will-change:transform}
+.ambient i:nth-child(1){width:360px;height:360px;top:-90px;left:6%;background:radial-gradient(circle,rgba(225,190,104,.5),transparent 70%);animation:ambient-drift 52s ease-in-out infinite}
+.ambient i:nth-child(2){width:320px;height:320px;bottom:-70px;right:5%;background:radial-gradient(circle,rgba(31,128,109,.42),transparent 70%);animation:ambient-drift 66s ease-in-out infinite reverse}
+.ambient i:nth-child(3){width:240px;height:240px;top:42%;left:-70px;background:radial-gradient(circle,rgba(203,162,78,.3),transparent 70%);animation:ambient-drift 74s ease-in-out infinite}
+@keyframes ambient-drift{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(26px,-34px,0)}}
+.reduce-motion .ambient i,.focus-mode .ambient i{animation:none!important}
+.focus-mode .ambient{opacity:.35}
+@media(prefers-reduced-motion:reduce){.ambient i{animation:none!important}}
