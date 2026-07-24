@@ -263,3 +263,23 @@
   .os-shell .context-switch-wrap{order:-1;width:100%}
   .os-shell .context-menu{width:min(320px,92vw)}
 }
+
+/* Research Workspace */
+.research-grid{display:grid;grid-template-columns:1fr 1.3fr;gap:18px;align-items:start}
+.research-col{display:grid;gap:12px}
+.research-col .input-card{display:grid;gap:10px}
+.research-list{display:grid;gap:10px}
+.research-list>article{border:1px solid rgba(127,127,127,.22);border-radius:13px;padding:13px 15px;display:grid;gap:8px}
+.research-list p{margin:0;font-size:13px;line-height:1.5}
+.claim-summary{display:flex;align-items:flex-start;gap:10px;width:100%;background:transparent;border:0;color:inherit;text-align:left;cursor:pointer;padding:0}
+.evidence-badge{white-space:nowrap;font:9px "DM Sans";letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:99px;border:1px solid rgba(127,127,127,.35);flex:none}
+.evidence-established .evidence-badge,.evidence-badge.evidence-established{color:#1f806d;border-color:rgba(31,128,109,.5);background:rgba(31,128,109,.08)}
+.evidence-hypothesis .evidence-badge,.evidence-badge.evidence-hypothesis,.evidence-badge.evidence-emerging,.evidence-badge.evidence-needs_verification{color:#a57628;border-color:rgba(165,118,40,.45);background:rgba(165,118,40,.08)}
+.evidence-badge.evidence-fictional,.evidence-badge.evidence-analogy{color:#8a5bb0;border-color:rgba(138,91,176,.45);background:rgba(138,91,176,.08)}
+.evidence-badge.evidence-rejected{color:#a33; border-color:rgba(170,51,51,.45);background:rgba(170,51,51,.08)}
+.claim-detail{display:grid;gap:10px;margin-top:10px;border-top:1px solid rgba(127,127,127,.18);padding-top:10px}
+.claim-detail label{display:grid;gap:5px;font:10px/1.4 "DM Sans";letter-spacing:.12em}
+.claim-detail textarea{border:1px solid rgba(127,127,127,.35);background:rgba(255,255,255,.4);color:inherit;border-radius:9px;padding:9px 11px;font:13px/1.5 "DM Sans";outline:0;letter-spacing:normal;min-height:56px;resize:vertical}
+.research-summary{margin-top:16px;display:grid;gap:8px}
+.evidence-mix{display:flex;flex-wrap:wrap;gap:7px}
+@media(max-width:900px){.research-grid{grid-template-columns:1fr}}
