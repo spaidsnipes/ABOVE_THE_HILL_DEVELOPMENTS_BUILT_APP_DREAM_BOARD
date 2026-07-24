@@ -58,15 +58,6 @@ whenever a system changes tier.
   skill registry" in favor of the newer spec (25 + registry). Output stays
   category-labeled; voice protection unchanged. Unit-tested
   (`tests/companion.test.mjs`).
-- **Creative Companion foundation** (2026-07-22) — `lib/companion.ts` +
-  `app/ai-studio.tsx`: 10 typed skills with behaviors, 6 working modes,
-  deterministic router with stated rationale, pinnable skills, opt-in
-  context assembly (draft/sources toggles = privacy guard), provider
-  abstraction over /api/ai with a labeled local fallback. Output arrives in
-  category-labeled segments (evidence / interpretation / inference /
-  speculation / recommendation / creative suggestion / generated draft).
-  Voice protection: copy or append-to-end-with-confirmation only — never
-  replaces text. Runs logged with provenance to dreamboard_companion_runs.
 - **Google Drive import (foundation)** (2026-07-22) — read-only OAuth
   connector fully built: `app/api/drive/*` (consent, callback with state
   check, file list, file/Google-Doc export download; session token in an
@@ -126,6 +117,13 @@ whenever a system changes tier.
   creator-managed remaining-work / blockers / deferred-ideas lists, version
   target, and a "ready to publish" action that unlocks only when every rule
   passes. Labeled "transparent rules, no AI judgment."
+- **Shell truthfulness & responsive fixes** (2026-07-23, Milestone 21) —
+  addresses the recording's P1 defects: primary navigation now resets scroll
+  to the top of the new page (window + stage); split-screen widths get fluid
+  heading/title sizing (no more 6-line Writing Studio title) and wrapping
+  header/toolbar actions; and the Writing Studio breadcrumb reads "Local
+  draft — not in a project" instead of falsely implying an "Untitled Project"
+  when none exists. Also removed the stale 10-skill Companion STATUS note.
 - **Project Isolation + Active Context** (2026-07-23, Milestone 19) —
   `lib/active-context.ts`: an active-context set of up to 7 projects (with a
   primary), persisted, with a header switcher. New Vision Vault and Knowledge
