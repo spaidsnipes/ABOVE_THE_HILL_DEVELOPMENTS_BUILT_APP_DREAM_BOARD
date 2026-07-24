@@ -49,6 +49,14 @@ whenever a system changes tier.
   where the creator approves theme groups before anything is applied.
   Approved themes are added alongside original tags (never replacing them)
   and synced to cloud vault entries where possible.
+- **Correction Ledger + Equation Lab** (2026-07-23, Milestone 23) —
+  `app/corrections-equations.tsx` + `supabase/dreamboard-corrections-equations.sql`,
+  as tabs inside the Research Workspace. Correction Ledger is permanent and
+  append-only (original preserved, revised/reason/evidence/affected locations,
+  private-or-published visibility). Equation Lab records expression, variables,
+  units/dimensions, assumptions, limitations, and a creator-set validation
+  status — with an explicit in-UI statement that being calculable is not the
+  same as being validated. Both project-scoped.
 - **Research Workspace** (2026-07-23, Milestone 22) — `app/research.tsx` +
   `lib/research.ts` + `supabase/dreamboard-research-workspace.sql`: per-project
   research questions (open/investigating/answered/parked) and a claim system

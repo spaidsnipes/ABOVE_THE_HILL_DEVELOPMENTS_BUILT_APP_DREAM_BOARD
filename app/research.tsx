@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 import { EVIDENCE_CLASSES, CLAIM_TYPES, CONFIDENCE_LEVELS as CONFIDENCE, VERIFICATION_STATES as VERIFICATION, QUESTION_STATES as QUESTION_STATUS, evidenceLabel, type EvidenceClass } from "../lib/research";
+import { CorrectionLedgerPanel, EquationLabPanel, type CorrectionsState, type EquationsState } from "./corrections-equations";
 
 
 type Question = { id: string; question: string; status: string; notes: string };
@@ -95,7 +96,8 @@ export function useResearch(user: User | null, projectId: string | null, notify:
 }
 
 
-export function ResearchView({ research, signedIn, projectTitle, onPassport, onProjects }: { research: ResearchState; signedIn: boolean; projectTitle: string | null; onPassport: () => void; onProjects: () => void }) {
+export function ResearchView({ research, corrections, equations, signedIn, projectTitle, onPassport, onProjects }: { research: ResearchState; corrections: CorrectionsState; equations: EquationsState; signedIn: boolean; projectTitle: string | null; onPassport: () => void; onProjects: () => void }) {
+  const [tab, setTab] = useState<"claims" | "corrections" | "equations">("claims");
   const [questionDraft, setQuestionDraft] = useState("");
   const [claimDraft, setClaimDraft] = useState("");
   const [claimClass, setClaimClass] = useState<EvidenceClass>("needs_verification");
@@ -112,6 +114,14 @@ export function ResearchView({ research, signedIn, projectTitle, onPassport, onP
 
   return <section className="view research-view">
     <div className="view-heading"><span className="eyebrow">RESEARCH WORKSPACE · {projectTitle.toUpperCase()}</span><h2>Separate what is known from what is not.</h2><p>Every claim carries an explicit evidence class. Dreamboard never upgrades a hypothesis into established fact on its own.</p></div>
+    <div className="vision-filters research-tabs" role="tablist">
+      <button role="tab" aria-selected={tab === "claims"} className={tab === "claims" ? "season active" : "season"} onClick={() => setTab("claims")}>Questions & Claims</button>
+      <button role="tab" aria-selected={tab === "corrections"} className={tab === "corrections" ? "season active" : "season"} onClick={() => setTab("corrections")}>Correction Ledger</button>
+      <button role="tab" aria-selected={tab === "equations"} className={tab === "equations" ? "season active" : "season"} onClick={() => setTab("equations")}>Equation Lab</button>
+    </div>
+    {tab === "corrections" && <CorrectionLedgerPanel state={corrections} />}
+    {tab === "equations" && <EquationLabPanel state={equations} />}
+    {tab === "claims" && <>
     {research.loadState === "needs-setup" && <div className="connection-note"><b>Research setup needed:</b><span>Run supabase/dreamboard-research-workspace.sql in your Supabase project to enable questions and claims.</span></div>}
 
     <div className="research-grid">
@@ -145,5 +155,6 @@ export function ResearchView({ research, signedIn, projectTitle, onPassport, onP
     </div>
 
     {research.claims.length > 0 && <section className="research-summary"><span className="eyebrow">EVIDENCE MIX</span><div className="evidence-mix">{EVIDENCE_CLASSES.filter(([value]) => byClass[value]).map(([value, label]) => <span key={value} className={`evidence-badge evidence-${value}`}>{label}: {byClass[value]}</span>)}</div><p className="import-truth">This mix is a mirror of how you classified your own claims — a research project full of hypotheses is honest, not incomplete.</p></section>}
+    </>}
   </section>;
 }

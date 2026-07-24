@@ -25,6 +25,8 @@ community → import → vision-vault.
 | `dreamboard_import_batches` | import-foundation | Bulk import batch records |
 | `dreamboard_source_documents` | import-foundation (+ import-extraction) | Per-file import records: storage path, extraction status/text/chars/error |
 | `dreamboard_research_questions` | research-workspace | Per-project research questions + status |
+| `dreamboard_corrections` | corrections-equations | Permanent append-only correction ledger |
+| `dreamboard_equations` | corrections-equations | Equation Lab: expression, variables, units, assumptions, validation status |
 | `dreamboard_claims` | research-workspace | Claims with evidence class, sources, objections, confidence, verification |
 | `dreamboard_chapters` | book-architect | Real chapter outline: part, title, purpose, notes, status, sort order |
 | `dreamboard_project_members` | collaboration | Members/invitations: role, status, invited_email (RLS via SECURITY DEFINER helpers, ADR-0006) |

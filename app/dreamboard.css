@@ -283,3 +283,15 @@
 .research-summary{margin-top:16px;display:grid;gap:8px}
 .evidence-mix{display:flex;flex-wrap:wrap;gap:7px}
 @media(max-width:900px){.research-grid{grid-template-columns:1fr}}
+
+/* Research tabs, correction ledger */
+.research-tabs{margin:0 0 14px}
+.ledger-panel,.equation-panel{display:grid;gap:14px}
+.ledger-panel .input-card,.equation-panel .input-card{display:grid;gap:10px}
+.correction-card{display:grid;gap:8px}
+.correction-diff{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.correction-diff small{font:9px "DM Sans";letter-spacing:.12em;opacity:.6}
+.correction-diff p{margin:2px 0 0;font-size:13px;line-height:1.5}
+.correction-diff i{opacity:.5}
+.correction-reason{margin:0;font-size:12px;opacity:.8}
+@media(max-width:700px){.correction-diff{grid-template-columns:1fr}.correction-diff i{display:none}}
