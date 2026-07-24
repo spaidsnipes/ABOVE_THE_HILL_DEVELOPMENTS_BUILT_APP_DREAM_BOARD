@@ -295,3 +295,8 @@
 .correction-diff i{opacity:.5}
 .correction-reason{margin:0;font-size:12px;opacity:.8}
 @media(max-width:700px){.correction-diff{grid-template-columns:1fr}.correction-diff i{display:none}}
+
+/* Legacy / Time Machine */
+.legacy-view .home-card{margin-bottom:14px;display:grid;gap:8px}
+.legacy-view .research-list article{gap:2px}
+.legacy-view .research-list small{opacity:.65;font-size:11px}
