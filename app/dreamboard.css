@@ -296,6 +296,24 @@
 .correction-reason{margin:0;font-size:12px;opacity:.8}
 @media(max-width:700px){.correction-diff{grid-template-columns:1fr}.correction-diff i{display:none}}
 
+/* Inspectable Memory + Creative Health */
+.memory-grid{display:grid;grid-template-columns:minmax(300px,.9fr) minmax(320px,1.1fr);gap:18px;align-items:start}
+.memory-grid .input-card,.memory-list,.creative-health-panel{display:grid;gap:12px}
+.memory-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.memory-health-view textarea,.memory-health-view input,.memory-health-view select,.memory-card textarea,.memory-card select{width:100%;border:1px solid rgba(127,127,127,.34);background:rgba(255,255,255,.42);color:inherit;border-radius:10px;padding:10px 12px;font:13px/1.55 "DM Sans";outline:0;letter-spacing:normal}
+.memory-health-view textarea,.memory-card textarea{min-height:90px;resize:vertical}
+.memory-health-view label,.memory-card label{display:grid;gap:5px;font:10px/1.4 "DM Sans";letter-spacing:.12em}
+.source-inline{display:grid!important;grid-template-columns:140px 1fr;gap:8px!important}
+.consent-row{display:flex!important;align-items:flex-start;gap:8px;font:12px/1.45 "DM Sans"!important;letter-spacing:normal!important}
+.consent-row input{width:auto!important;margin-top:3px}
+.memory-list{max-height:690px;overflow:auto;padding-right:3px}
+.memory-card,.health-observations article{border:1px solid rgba(127,127,127,.24);border-radius:15px;padding:15px 16px;background:rgba(255,255,255,.22);display:grid;gap:9px}
+.memory-card.sensitive{border-color:rgba(165,118,40,.56);box-shadow:inset 0 0 0 1px rgba(220,184,107,.12)}
+.memory-card-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.memory-card-head>div{display:flex;gap:6px}.memory-card-head b{font:9px "DM Sans";letter-spacing:.1em;text-transform:uppercase;color:#a57628}.memory-card p{margin:0;font-size:14px;line-height:1.65;white-space:pre-wrap}.memory-card small,.health-observations small{font-size:11px;line-height:1.5;opacity:.72}
+.creative-health-panel{border:1px solid rgba(165,118,40,.32);border-radius:19px;padding:20px;background:linear-gradient(135deg,rgba(220,184,107,.13),rgba(31,128,109,.08))}
+.health-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.health-head h3{margin:5px 0;font-size:22px}.health-head p{margin:0;max-width:630px;font-size:13px;line-height:1.6;opacity:.78}.health-observations{display:grid;gap:12px}.health-observations article h3{margin:0;font-size:18px}.health-observations article p{margin:0;font-size:13px;line-height:1.65}.health-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:3px}.health-actions .ghost{font-size:11px;padding:6px 9px}
+@media(max-width:900px){.memory-grid{grid-template-columns:1fr}.memory-list{max-height:none}.health-head{display:grid}.memory-form-grid{grid-template-columns:1fr}.source-inline{grid-template-columns:1fr}}
+
 /* Legacy / Time Machine */
 .legacy-view .home-card{margin-bottom:14px;display:grid;gap:8px}
 .legacy-view .research-list article{gap:2px}

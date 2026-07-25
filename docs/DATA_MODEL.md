@@ -36,6 +36,8 @@ community → import → vision-vault.
 | `dreamboard_exports` | publishing | Versioned export history (format, title, word count) |
 | `dreamboard_audio_narrations` | audiobook | Narration records: storage path, chapter link, pronunciation notes |
 | `dreamboard_vision_entries` | vision-vault | **Vision Vault**: the creator's own ideas/dreams/goals (ADR-0004) |
+| `dreamboard_project_memory` | project-memory-health | Inspectable, source-labeled project/creator memory; sensitive entries require explicit consent |
+| `dreamboard_creative_health_preferences` | project-memory-health | Per-project opt-in and dismissals for explainable Creative Health observations |
 
 Storage buckets: `dreamboard-private` (import originals, path
 `{owner_id}/{batch_id}/{n}-{name}`).

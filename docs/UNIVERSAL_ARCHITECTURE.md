@@ -79,7 +79,7 @@ Private by default (RLS). Project-level permissions via `SECURITY DEFINER`
 helpers (see ADR-0006). No automatic cross-project blending. Explicit
 active-context selection. No training on private content.
 
-## Phased plan (milestones 18–25)
+## Phased plan (milestones 18–30)
 
 | # | Milestone | Core deliverable |
 | --- | --- | --- |
@@ -91,7 +91,7 @@ active-context selection. No training on private content.
 | 23 | Constellation View | navigable multi-project graph, ecosystem→note zoom |
 | 24 | Time Machine + Legacy Library | On This Day / evolution; finished-work archive |
 | 25 | Time Machine + Legacy Library | On This Day / evolution; finished-work archive |
-| 26 | Project Memory + Creative Health | inspectable/editable memory; gentle patterns, disable-able |
+| 26 | Project Memory + Creative Health | inspectable/editable memory; gentle patterns, disable-able — implemented in `supabase/dreamboard-project-memory-health.sql` + `app/memory-health.tsx` |
 | 27 | Imagination Mode + Reality Check + mode switch | Imagine/Build/Research/Challenge/Refine/Publish, labeled outputs |
 | 28 | Voice Learning | Voice Guardian samples, confidence, quote vs imitation |
 | 29 | Guest→Passport migration + accessibility pass | safe migration preview; contrast/focus/labels; route scroll reset |
