@@ -18,7 +18,7 @@ async function render(path = "/") {
   );
 }
 
-test("server-renders the Dreamboard shell", async () => {
+test("server-renders the public Dreamboard front door", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -26,23 +26,18 @@ test("server-renders the Dreamboard shell", async () => {
   const html = await response.text();
   assert.match(html, /<title>Dreamboard \| WOW World<\/title>/i);
   assert.match(html, /DREAMBOARD/);
-  assert.match(html, /role="status"/);
+  assert.match(html, /Write the vision\./);
+  assert.match(html, /Make it plain\./);
+  assert.match(html, /Passport sign in/);
 });
 
-test("renders the core navigation, including both vaults", async () => {
+test("renders the public creative path before Passport sign-in", async () => {
   const html = await (await render()).text();
   for (const view of [
-    "Creator’s Home",
-    "Search",
-    "Passport",
-    "Vision Vault",
-    "Knowledge Vault",
-    "Creative Graph",
-    "Book Architect",
-    "Projects",
-    "Writing Studio",
-    "AI Studio",
-    "Publishing",
+    "Capture",
+    "Connect",
+    "Create",
+    "Your work begins private.",
   ]) {
     assert.match(html, new RegExp(view.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `missing nav view: ${view}`);
   }
@@ -53,5 +48,5 @@ test("ships no sample or placeholder creative content", async () => {
   // The truthfulness rule (ADR-0002): no fake notes, posts, products, or drafts.
   assert.doesNotMatch(html, /lorem ipsum/i);
   assert.doesNotMatch(html, /WM ID/);
-  assert.match(html, /Dreamboard is ready for your next real piece of work\./);
+  assert.match(html, /No project is waiting here under your name\./);
 });
