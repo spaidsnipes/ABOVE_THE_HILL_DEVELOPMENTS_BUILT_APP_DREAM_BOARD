@@ -7,7 +7,7 @@ import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 import { VisionVaultView, useVisionVault } from "./vision-vault";
 import { CreativeGraphView, useCreativeGraph } from "./creative-graph";
 import { CreatorHome } from "./creator-home";
-import { PassportView } from "./passport";
+import { PassportView, type LocalMigrationSummary } from "./passport";
 import { ProjectsView, useProjects } from "./projects";
 import { BookArchitectView, useChapters } from "./book-architect";
 import { SearchView } from "./search";
@@ -107,6 +107,7 @@ export default function Dreamboard() {
   const [passportUser, setPassportUser] = useState<User | null>(null);
   const [passportEmail, setPassportEmail] = useState("");
   const [passportHandle, setPassportHandle] = useState("");
+  const [migrationState, setMigrationState] = useState<"idle" | "migrating" | "complete" | "error">("idle");
   const [displayName, setDisplayName] = useState("");
   const [wisdomMode, setWisdomMode] = useState(false);
   const [creatorSeason, setCreatorSeason] = useState<CreatorSeason>("planting");
@@ -197,6 +198,7 @@ export default function Dreamboard() {
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-snapshots", JSON.stringify(snapshots)); }, [snapshots, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-theme", JSON.stringify(dreamTheme)); }, [dreamTheme, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-reduce-motion", JSON.stringify(reduceMotion)); }, [reduceMotion, hydrated]);
+  useEffect(() => { window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }); }, [active, reduceMotion]);
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
@@ -350,6 +352,46 @@ export default function Dreamboard() {
     }
     setPassportStatus("sent"); setPassportMessage(`Passport sign-in email sent to ${passportEmail.trim()}. Open the link in that email, then return here. If it is not visible in a few minutes, check Spam or Promotions.`);
   };
+  const localMigration: LocalMigrationSummary = useMemo(() => ({ notes: notes.filter(note => !note.cloudId).length, draftWords: draft.trim() ? draft.trim().split(/\s+/).length : 0, snapshots: snapshots.length }), [notes, draft, snapshots]);
+  const migrateLocalWork = async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase || !passportUser) { setNotice("Set up your Passport before securing local work."); return; }
+    if (!localMigration.notes && !localMigration.draftWords && !localMigration.snapshots) { setNotice("There is no unsynced local work to secure."); return; }
+    if (!window.confirm(`Secure ${localMigration.notes} local notes, ${localMigration.draftWords.toLocaleString()} draft words, and ${localMigration.snapshots} local versions to this Passport? Your originals stay on this device.`)) return;
+    setMigrationState("migrating");
+    try {
+      const localNotes = notes.filter(note => !note.cloudId);
+      const savedIds = new Map<number, string>();
+      for (const note of localNotes) {
+        const { data, error } = await supabase.from("dreamboard_vault_entries").insert({ owner_id: passportUser.id, title: note.title.slice(0, 240), content: note.body, source_type: "manual", tags: [...new Set([...note.tags, "Migrated locally"])], project_id: note.projectId || null }).select("id").single();
+        if (error || !data) throw new Error("A local note could not be copied.");
+        savedIds.set(note.id, data.id as string);
+      }
+      if (savedIds.size) setNotes(previous => previous.map(note => savedIds.has(note.id) ? { ...note, cloudId: savedIds.get(note.id) } : note));
+      let documentId = writingDocument?.id || null;
+      if (draft.trim()) {
+        if (!documentId) {
+          const { data, error } = await supabase.from("dreamboard_writing_documents").insert({ owner_id: passportUser.id, title: "Migrated local draft", chapter_number: chapter + 1, body: draft }).select("id,title,chapter_number,body,updated_at").single();
+          if (error || !data) throw new Error("The local draft could not be copied.");
+          const document = data as WritingDocument; setWritingDocument(document); documentId = document.id;
+        } else {
+          const { error } = await supabase.from("dreamboard_writing_documents").update({ body: draft, updated_at: new Date().toISOString() }).eq("id", documentId);
+          if (error) throw new Error("The local draft could not be copied.");
+        }
+      }
+      if (documentId) {
+        const migratedSnapshotIds = new Set(readLocal<number[]>("dreamboard-passport-migrated-snapshots", []));
+        for (const snapshot of snapshots) {
+          if (migratedSnapshotIds.has(snapshot.id)) continue;
+          const { error } = await supabase.from("dreamboard_document_versions").insert({ owner_id: passportUser.id, document_id: documentId, label: `Migrated · ${snapshot.label}`.slice(0, 240), body: snapshot.body, word_count: snapshot.words });
+          if (error) throw new Error("A local version could not be copied.");
+          migratedSnapshotIds.add(snapshot.id);
+          window.localStorage.setItem("dreamboard-passport-migrated-snapshots", JSON.stringify([...migratedSnapshotIds]));
+        }
+      }
+      setMigrationState("complete"); setNotice("Your approved local work now has private Passport copies. Originals stayed on this device.");
+    } catch (error) { setMigrationState("error"); setNotice(error instanceof Error ? `${error.message} Originals remain safely local.` : "Migration did not finish. Originals remain safely local."); }
+  };
   const savePassportProfile = async () => {
     const supabase = getSupabaseBrowserClient();
     const handle = passportHandle.trim().toLowerCase();
@@ -374,6 +416,7 @@ export default function Dreamboard() {
   const signOutPassport = async () => { const supabase = getSupabaseBrowserClient(); if (!supabase) return; await supabase.auth.signOut(); setPassportUser(null); setPassportHandle(""); setPassportStatus("ready"); setPassportMessage("Signed out of Passport on this device."); };
 
   return <main className={`os-shell theme-${dreamTheme}${focusMode ? " focus-mode" : ""}${reduceMotion ? " reduce-motion" : ""}`}>
+    <a className="skip-link" href="#dreamboard-main">Skip to workspace</a>
     <div className="ambient" aria-hidden="true"><i /><i /><i /></div>
     <aside className="rail">
       <button className="wordmark dreamboard-mark" onClick={() => setActive("Creator’s Home")} aria-label="Dreamboard home"><span>DB</span><div><b>DREAMBOARD</b><small>BY WOW WORLD</small></div></button>
@@ -382,7 +425,7 @@ export default function Dreamboard() {
       <div className="ecosystem"><p>WOW WORLD · LIVE IN OVERFLOW</p><button onClick={() => setActive("Lounge")}><span>◉</span> Lounge <b>OPEN</b></button><button onClick={() => setActive("Shop")}><span>◉</span> Shop <b>OPEN</b></button><button onClick={() => setActive("Radio")}><span>◉</span> Radio <b>OPEN</b></button></div>
       <button className="founder" onClick={() => setActive("Settings")}><span>AH</span><div><b>Above the Hill</b><small>Settings · founder workspace</small></div></button>
     </aside>
-    <section className="stage">
+    <section className="stage" id="dreamboard-main" tabIndex={-1}>
       <header><div><span className="eyebrow">DREAMBOARD · WOW WORLD CREATIVE SYSTEM</span><h1>{active}</h1></div><div className="header-actions"><ProjectSwitcher projects={projects.projects} activeContext={activeContext} onManage={() => setActive("Projects")} /><button className="wm-account" onClick={() => setActive("Passport")}>{passportUser ? `@${passportHandle || passportUser.email?.split("@")[0] || "member"}` : "Set up Passport"}</button><span className="presence"><i /> {hydrated ? "Saved on this device" : "Opening workspace"}</span><button className="ghost" onClick={() => setActive("Bulk Import")}>Import material</button><button className="gold" onClick={() => setActive("Writing Studio")}>Continue creating <b>→</b></button></div></header>
       <div className="notice" role="status"><span>✦</span>{notice}</div>
       {active === "Creator’s Home" && <CreatorHome notes={notes} draft={draft} wordCount={wordCount} organized={organized} wisdomMode={wisdomMode} creatorSeason={creatorSeason} onGo={setActive} onOrganize={organize} vault={visionVault} snapshots={snapshots} importBatches={importBatches} projectTitle={primaryProject?.title || null} />}
@@ -403,7 +446,7 @@ export default function Dreamboard() {
       {active === "Version History" && <VersionHistory snapshots={snapshots} currentDraft={draft} onSave={saveSnapshot} onRestore={restoreSnapshot} onWrite={() => setActive("Writing Studio")} />}
       {active === "Reader" && <ReaderView draft={draft} chapterIndex={chapter} chapterTitles={chapterTitles} onSelectChapter={setChapter} projectTitle={writingDocument?.title || "Your project"} />}
       {active === "Audiobook Studio" && <AudiobookView user={passportUser} notify={setNotice} chapters={bookChapters.chapters} />}
-      {active === "Passport" && <PassportView user={passportUser} email={passportEmail} setEmail={setPassportEmail} handle={passportHandle} setHandle={setPassportHandle} status={passportStatus} message={passportMessage} onSend={() => void sendPassportMagicLink()} onSave={() => void savePassportProfile()} onSignOut={() => void signOutPassport()} notify={setNotice} />}
+      {active === "Passport" && <PassportView user={passportUser} email={passportEmail} setEmail={setPassportEmail} handle={passportHandle} setHandle={setPassportHandle} status={passportStatus} message={passportMessage} onSend={() => void sendPassportMagicLink()} onSave={() => void savePassportProfile()} onSignOut={() => void signOutPassport()} notify={setNotice} localMigration={localMigration} migrationState={migrationState} onMigrateLocalWork={() => void migrateLocalWork()} />}
       {active === "Publishing" && <PublishingView user={passportUser} notify={setNotice} projects={projects.projects} chapters={bookChapters.chapters} chapterTitle={chapterTitle} draft={draft} projectTitle={writingDocument?.title || "Untitled project"} displayName={displayName || passportHandle} />}
       {active === "Legacy" && <LegacyView legacy={legacy} projects={projects.projects} visionEntries={visionVault.entries} snapshots={snapshots} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} onGo={setActive} />}
       {active === "AI Studio" && <AIStudioView user={passportUser} notify={setNotice} wisdomEnabled={wisdomMode} context={{ projectId: primaryProject?.id || null, projectTitle: primaryProject?.title || writingDocument?.title || null, chapterTitle, draftExcerpt: draft, sources: notes.slice(0, 3).map(note => ({ title: note.title, excerpt: note.body })), projectInstructions: primaryProject?.ai_instructions || "", writingVoice: primaryProject?.writing_voice || "" }} runs={companionRuns} onRunSaved={run => setCompanionRuns(previous => [run, ...previous].slice(0, 20))} onAppendToDraft={text => setDraft(previous => previous ? `${previous}\n\n${text}` : text)} />}

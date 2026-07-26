@@ -337,3 +337,4 @@
 .reduce-motion .ambient i,.focus-mode .ambient i{animation:none!important}
 .focus-mode .ambient{opacity:.35}
 @media(prefers-reduced-motion:reduce){.ambient i{animation:none!important}}
+.skip-link{position:fixed;z-index:20;left:12px;top:-60px;background:#f1d477;color:#142218;padding:10px 14px;border-radius:8px;font-weight:700;transition:top .15s}.skip-link:focus{top:12px}.stage:focus{outline:none}.rail-link:focus-visible,.gold:focus-visible,.ghost:focus-visible,.text-button:focus-visible,.season:focus-visible,.context-switch:focus-visible{outline:3px solid rgba(241,212,119,.85);outline-offset:3px}.passport-migration{grid-column:1/-1}

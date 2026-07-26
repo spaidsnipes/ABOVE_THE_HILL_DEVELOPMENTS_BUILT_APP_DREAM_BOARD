@@ -43,7 +43,9 @@ function useCreatorIdentity(user: User | null, notify: (message: string) => void
   return { bio, setBio, disciplines, setDisciplines, state, saving, save };
 }
 
-export function PassportView({ user, email, setEmail, handle, setHandle, status, message, onSend, onSave, onSignOut, notify }: { user: User | null; email: string; setEmail: (value: string) => void; handle: string; setHandle: (value: string) => void; status: string; message: string; onSend: () => void; onSave: () => void; onSignOut: () => void; notify: (message: string) => void }) {
+export type LocalMigrationSummary = { notes: number; draftWords: number; snapshots: number };
+
+export function PassportView({ user, email, setEmail, handle, setHandle, status, message, onSend, onSave, onSignOut, notify, localMigration, migrationState, onMigrateLocalWork }: { user: User | null; email: string; setEmail: (value: string) => void; handle: string; setHandle: (value: string) => void; status: string; message: string; onSend: () => void; onSave: () => void; onSignOut: () => void; notify: (message: string) => void; localMigration: LocalMigrationSummary; migrationState: "idle" | "migrating" | "complete" | "error"; onMigrateLocalWork: () => void }) {
   const identity = useCreatorIdentity(user, notify);
   const missingConnection = status === "needs-connection";
   return <section className="view wm-id">
@@ -62,6 +64,14 @@ export function PassportView({ user, email, setEmail, handle, setHandle, status,
           <button className="gold wide" onClick={() => void identity.save()} disabled={identity.state !== "ready" || identity.saving}>{identity.saving ? "Saving…" : "Save creator identity"} <b>→</b></button>
           <p className="wm-message">This profile section stays private to your Passport until you intentionally share work that uses it.</p>
         </>}
+      </section>
+      <section className="wm-card wm-form passport-migration">
+        <span className="eyebrow">LOCAL WORK → PASSPORT</span>
+        <h3>Bring forward only what you approve.</h3>
+        <p>{localMigration.notes.toLocaleString()} unsynced note{localMigration.notes === 1 ? "" : "s"} · {localMigration.draftWords.toLocaleString()} draft words · {localMigration.snapshots.toLocaleString()} local version{localMigration.snapshots === 1 ? "" : "s"} found on this device.</p>
+        <p className="wm-message">This makes private cloud copies under this Passport. The originals on this device are kept. It never uploads anything until you choose this button.</p>
+        <button className="gold wide" onClick={onMigrateLocalWork} disabled={migrationState === "migrating" || migrationState === "complete" || (!localMigration.notes && !localMigration.draftWords && !localMigration.snapshots)}>{migrationState === "migrating" ? "Securing local work…" : migrationState === "complete" ? "Local work secured" : "Secure approved local work"} <b>→</b></button>
+        {migrationState === "error" && <p className="wm-message">Some work could not be copied. Nothing was deleted locally; retry when your connection is ready.</p>}
       </section>
       <section className="wm-card wm-orbit-card passport-future">
         <span className="eyebrow">PASSPORT · WHAT GROWS FROM HERE</span>
