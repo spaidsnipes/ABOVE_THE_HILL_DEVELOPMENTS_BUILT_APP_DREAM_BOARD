@@ -1,10 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 
 type IdentityState = "loading" | "ready" | "needs-migration" | "local";
+type PassportActivity = {
+  id: string;
+  event_type: "handoff_issued" | "handoff_consumed";
+  detail: { destination?: string } | null;
+  created_at: string;
+};
+
+function usePassportActivity(user: User | null) {
+  const [events, setEvents] = useState<PassportActivity[]>([]);
+  const [state, setState] = useState<"idle" | "loading" | "ready" | "unavailable">("idle");
+
+  const refresh = useCallback(async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase || !user) { setEvents([]); setState("idle"); return; }
+    setState("loading");
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) { setEvents([]); setState("unavailable"); return; }
+    try {
+      const response = await fetch("/api/passport/audit", { headers: { Authorization: `Bearer ${session.access_token}` }, cache: "no-store" });
+      if (!response.ok) throw new Error("Passport activity is not available yet.");
+      const payload = await response.json() as { events?: PassportActivity[] };
+      setEvents(Array.isArray(payload.events) ? payload.events : []);
+      setState("ready");
+    } catch {
+      setEvents([]);
+      setState("unavailable");
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void refresh(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [refresh]);
+  return { events, state, refresh };
+}
 
 // Deeper identity fields live behind supabase/dreamboard-passport-foundation.sql;
 // the view degrades honestly when that migration hasn't been run.
@@ -47,6 +82,7 @@ export type LocalMigrationSummary = { notes: number; draftWords: number; snapsho
 
 export function PassportView({ user, email, setEmail, code, setCode, handle, setHandle, status, message, onSend, onVerifyCode, onCheckSession, onSave, onSignOut, notify, localMigration, migrationState, onMigrateLocalWork }: { user: User | null; email: string; setEmail: (value: string) => void; code: string; setCode: (value: string) => void; handle: string; setHandle: (value: string) => void; status: string; message: string; onSend: () => void; onVerifyCode: () => void; onCheckSession: () => void; onSave: () => void; onSignOut: () => void; notify: (message: string) => void; localMigration: LocalMigrationSummary; migrationState: "idle" | "migrating" | "complete" | "error"; onMigrateLocalWork: () => void }) {
   const identity = useCreatorIdentity(user, notify);
+  const activity = usePassportActivity(user);
   const missingConnection = status === "needs-connection";
   return <section className="view wm-id">
     <div className="view-heading"><span className="eyebrow">ONE PASSPORT · WOW WORLD</span><h2>Your WOW World Passport.</h2><p>Your secure Passport carries your creator identity through Dreamboard and the World of Wealth—encouraging people to live in the overflow.</p></div>
@@ -78,6 +114,16 @@ export function PassportView({ user, email, setEmail, code, setCode, handle, set
         <h3>Built as your work becomes real.</h3>
         <p>Your Passport will carry these as their systems come online — none of them are simulated in the meantime:</p>
         <ul className="passport-roadmap"><li><b>Projects & Creative Graph</b> — already live, private to this Passport.</li><li><b>Creator timeline & version lineage</b> — grows from your saved versions.</li><li><b>Avatar & media</b> — arrives with private media storage.</li><li><b>Reputation, organizations, legacy</b> — arrive with collaboration and publishing.</li></ul>
+      </section>
+      <section className="wm-card wm-form passport-activity">
+        <div className="passport-activity-head"><span className="eyebrow">PASSPORT · SECURE ACTIVITY</span><button className="text-button" onClick={() => void activity.refresh()} disabled={activity.state === "loading"}>{activity.state === "loading" ? "Refreshing…" : "Refresh"}</button></div>
+        <h3>Your WOW World connection trail.</h3>
+        {activity.state === "unavailable" ? <p className="wm-message">Secure activity will appear once the Passport audit migration is active. Nothing is being simulated here.</p> : activity.state === "loading" && !activity.events.length ? <p className="wm-message">Loading your private activity…</p> : !activity.events.length ? <p className="wm-message">No cross-app Passport activity yet. When you securely open Lounge, Shop, or Radio, the handoff will appear here.</p> : <ul className="passport-activity-list">{activity.events.map(event => {
+          const destination = event.detail?.destination ? event.detail.destination[0].toUpperCase() + event.detail.destination.slice(1) : "WOW World";
+          const when = new Date(event.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+          return <li key={event.id}><b>{event.event_type === "handoff_consumed" ? `Passport accepted by ${destination}` : `Passport handoff prepared for ${destination}`}</b><span>{when}</span></li>;
+        })}</ul>}
+        <p className="wm-message">Only you can see this activity. It records secure Passport handoffs—not your private writing, files, or conversations.</p>
       </section>
     </div>}
   </section>;
