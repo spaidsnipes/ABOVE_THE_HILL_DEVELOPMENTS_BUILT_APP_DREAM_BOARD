@@ -108,3 +108,41 @@ truthfulness, route scroll reset on nav, responsive split-screen header/title).
 Each milestone: real production code, a safe migration, tests, browser
 verification, docs, and a clean merged checkpoint before the next. No
 placeholder is ever described as complete.
+
+## Production path (milestones 36–65)
+
+This is the delivery order after the universal foundation. A milestone is only
+complete when its user journey, data boundary, and failure state are testable.
+
+| # | Milestone | Completion condition |
+| --- | --- | --- |
+| 36 | Passport handoff | One-time, 90-second, server-only handoff opens Lounge, Shop, or Radio with a real shared Passport session. |
+| 37 | Device code sign-in | A creator can enter a Supabase email OTP on the device they want to use; email template and redirect configuration are verified. |
+| 38 | Identity audit log | Sign-in, handoff, consent, and revocation events have an owner-visible audit trail. |
+| 39 | WOW community hardening | WM Pro Lounge uses owner UUIDs, restrictive RLS, and server-authenticated write APIs. |
+| 40 | WOW radio roles | Station publishing/upload uses explicit owner/editor roles and private upload authorization. |
+| 41 | WOW shop commerce boundary | Catalog remains real; checkout begins only with a selected, verified payment provider and webhooks. |
+| 42 | Broker consent boundary | Every broker tile states its actual status; OAuth begins only with provider credentials, callback URLs, encryption, revocation, and compliance review. |
+| 43 | Import session ledger | A 7,000-file archive survives browser refresh, resumes safely, and retains per-file receipts. |
+| 44 | Private intake guardrails | File size/type limits, hashes, duplicate handling, retries, and quota messages are enforced. |
+| 45 | Extraction workers | Text/document extraction records progress, failures, retry, and original provenance. |
+| 46 | Private retrieval index | Creator-approved chunks become project-scoped, searchable private material. |
+| 47 | Drive consent | Google Drive uses limited read-only consent, folder selection, disconnect, and token revocation. |
+| 48 | Vault search | Search/filter/source views work across imported material without inventing relationships. |
+| 49 | Source assignment | Captures and sources can be assigned to projects with reversible, audited links. |
+| 50 | Book workflow | Outline, chapters, source links, manuscript revisions, and exports operate from one source of truth. |
+| 51 | Voice consent | Voice references require creator ownership/permission, project scope, removal, and coverage reporting. |
+| 52 | Companion provider | A provider-backed Companion has consent, active-context limits, provenance, and spend caps. |
+| 53 | Companion safety ledger | Each model run has an owner-visible record, tool/data scope, and safe error/retry state. |
+| 54 | Writing resilience | Offline drafts, conflict recovery, version restore, and export verification are end-to-end tested. |
+| 55 | Audiobook media | Private audio uploads, playback, deletion, and chapter linkage are verified with signed URLs. |
+| 56 | Publishing workflow | Release checklist, public preview, permissions, and destination-specific publishing are truthful and versioned. |
+| 57 | Collaboration operations | Invitations, RBAC, comments, reviews, and activity are tested against unauthorized access. |
+| 58 | Moderation operations | Reporting, blocking, moderation actions, retention, and appeals have real owner/admin data paths. |
+| 59 | Creator ownership | Full private export, deletion, and retention controls are documented and tested. |
+| 60 | Long-session design | Luminous glass visuals pass contrast, focus, reduced-motion, and extended writing/reading comfort review. |
+| 61 | Mobile journey | Passport, capture, import staging, writing, and WOW handoff work on supported mobile browsers. |
+| 62 | Accessibility audit | Keyboard, screen reader labels, focus order, and error messages pass a formal audit. |
+| 63 | Observability | Error reporting and privacy-safe operational logs cover every critical server route. |
+| 64 | Load/security test | Large imports, session expiry, RLS, rate limits, and failure recovery are exercised before launch. |
+| 65 | Launch gate | A signed-in creator completes the critical journey; only then may the app be called publicly launch-ready. |
