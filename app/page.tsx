@@ -8,6 +8,7 @@ import { VisionVaultView, useVisionVault } from "./vision-vault";
 import { CreativeGraphView, useCreativeGraph } from "./creative-graph";
 import { CreatorHome } from "./creator-home";
 import { PassportView, type LocalMigrationSummary } from "./passport";
+import { FrontDoor } from "./front-door";
 import { ProjectsView, useProjects } from "./projects";
 import { BookArchitectView, useChapters } from "./book-architect";
 import { SearchView } from "./search";
@@ -110,6 +111,7 @@ export default function Dreamboard() {
   const [communityStatus, setCommunityStatus] = useState<CommunityStatus>(() => getSupabaseBrowserClient() ? "connecting" : "local");
   const [isPlaying, setIsPlaying] = useState(false);
   const [passportUser, setPassportUser] = useState<User | null>(null);
+  const [frontDoorOpen, setFrontDoorOpen] = useState(true);
   const [passportEmail, setPassportEmail] = useState("");
   const [passportCode, setPassportCode] = useState("");
   const [passportHandle, setPassportHandle] = useState("");
@@ -211,6 +213,7 @@ export default function Dreamboard() {
     const loadIdentity = async (user: User | null) => {
       setPassportUser(user);
       if (!user) return;
+      setFrontDoorOpen(false);
       const [passportResult, profileResult] = await Promise.all([
         supabase.from("dreamboard_passports").select("handle").eq("user_id", user.id).maybeSingle(),
         supabase.from("dreamboard_profiles").select("display_name, wisdom_mode, creator_season, theme").eq("id", user.id).maybeSingle(),
@@ -502,7 +505,7 @@ export default function Dreamboard() {
     const { error } = await supabase.from("dreamboard_profiles").upsert({ id: passportUser.id, display_name: displayName || passportHandle || "Creator", wisdom_mode: wisdomMode, creator_season: creatorSeason, theme: dreamTheme });
     setNotice(error ? "Your settings could not save yet. Your local choices are still visible in this session." : "Your Dreamboard settings are saved to your creator account.");
   };
-  const signOutPassport = async () => { const supabase = getSupabaseBrowserClient(); if (!supabase) return; await supabase.auth.signOut(); setPassportUser(null); setPassportHandle(""); setPassportStatus("ready"); setPassportMessage("Signed out of Passport on this device."); };
+  const signOutPassport = async () => { const supabase = getSupabaseBrowserClient(); if (!supabase) return; await supabase.auth.signOut(); setPassportUser(null); setPassportHandle(""); setPassportStatus("ready"); setPassportMessage("Signed out of Passport on this device."); setFrontDoorOpen(true); };
   const exportCreatorWorkspace = () => {
     downloadCreatorWorkspace(buildCreatorWorkspaceExport({
       notes: notes.map(({ title, body, kind, date, tags }) => ({ title, body, kind, date, tags })),
@@ -517,6 +520,8 @@ export default function Dreamboard() {
     { label: "Current-device workspace", state: "local", detail: `${notes.length} local source item${notes.length === 1 ? "" : "s"}, ${wordCount.toLocaleString()} draft word${wordCount === 1 ? "" : "s"}, and ${snapshots.length} version snapshot${snapshots.length === 1 ? "" : "s"} are available in this browser.` },
     { label: "WOW World services", state: "needs-action", detail: "Lounge, Radio, and Shop are separate WOW World services. Dreamboard opens their real surfaces, but shared sign-in and payment setup must be completed before they can be described as one account." },
   ];
+
+  if (frontDoorOpen && !passportUser) return <FrontDoor onEnter={() => { setFrontDoorOpen(false); setActive("Passport"); }} />;
 
   return <main className={`os-shell theme-${dreamTheme}${focusMode ? " focus-mode" : ""}${reduceMotion ? " reduce-motion" : ""}`}>
     <a className="skip-link" href="#dreamboard-main">Skip to workspace</a>

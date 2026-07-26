@@ -4,6 +4,7 @@ import "./dreamboard.css";
 import "./wm-id.css";
 import "./studios.css";
 import "./home-hero.css";
+import "./front-door.css";
 
 export const metadata: Metadata = {
   title: "Dreamboard | WOW World",
