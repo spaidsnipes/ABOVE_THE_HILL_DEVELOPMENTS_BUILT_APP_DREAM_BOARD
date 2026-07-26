@@ -30,6 +30,7 @@ import { buildCreatorWorkspaceExport } from "../lib/creator-export";
 import { downloadCreatorWorkspace } from "./creator-ownership";
 import { LaunchReadinessView, type ReadinessCheck } from "./launch-readiness";
 import { WOW_WORLD_BRIDGE_BOUNDARY, wowWorldDestination, type WowWorldRoute } from "../lib/wow-bridge";
+import { ARCHIVE_STAGE_LIMIT, planArchiveIntake } from "../lib/archive-scale";
 
 type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[]; cloudId?: string; projectId?: string | null };
 type Snapshot = { id: number; label: string; body: string; chapter: number; date: string; words: number };
@@ -268,14 +269,32 @@ export default function Dreamboard() {
   const handleFile = (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { addNote(String(reader.result || ""), "Imported file"); setNotice(`${file.name} is now in your Knowledge Vault.`); setActive("Knowledge Vault"); }; reader.readAsText(file); };
   const chooseImportFiles = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
+    const plan = planArchiveIntake(files);
+    const oversized = files.find(file => file.size > 50 * 1024 * 1024);
+    if (oversized) {
+      setImportFiles([]);
+      setImportProgress({ uploaded: 0, failed: 0, total: 0 });
+      event.target.value = "";
+      setNotice(`“${oversized.name}” is larger than the current 50 MB protected-upload limit. Keep that original aside and split or compress it before staging the batch.`);
+      return;
+    }
+    if (!plan.withinStageLimit) {
+      setImportFiles([]);
+      setImportProgress({ uploaded: 0, failed: 0, total: 0 });
+      event.target.value = "";
+      setNotice(`${plan.message} You selected ${files.length.toLocaleString()} files, so no files were staged or uploaded.`);
+      return;
+    }
     setImportFiles(files);
     setImportProgress({ uploaded: 0, failed: 0, total: files.length });
-    if (files.length) setNotice(`${files.length.toLocaleString()} file${files.length === 1 ? "" : "s"} staged. Nothing uploads until you start the private import.`);
+    if (files.length) setNotice(`${plan.message} Nothing uploads until you start the private import.`);
   };
   const uploadImportBatch = async () => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase || !passportUser) { setNotice("Set up your Passport before starting a private import."); setActive("Passport"); return; }
     if (!importFiles.length) { setNotice("Choose one or more files first."); return; }
+    const plan = planArchiveIntake(importFiles);
+    if (!plan.withinStageLimit) { setNotice(`This batch is over the ${ARCHIVE_STAGE_LIMIT.toLocaleString()}-file protected intake limit. Split it before uploading so every original receives a durable receipt.`); return; }
     setImporting(true);
     setImportProgress({ uploaded: 0, failed: 0, total: importFiles.length });
     const totalBytes = importFiles.reduce((total, file) => total + file.size, 0);
