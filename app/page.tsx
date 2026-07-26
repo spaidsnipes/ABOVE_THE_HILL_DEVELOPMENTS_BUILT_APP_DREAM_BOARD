@@ -373,7 +373,7 @@ export default function Dreamboard() {
       setPassportMessage(`Dreamboard could not send your Passport email: ${passportErrorMessage(error.message)}`);
       return;
     }
-    setPassportStatus("sent"); setPassportMessage(`Passport sign-in email sent to ${passportEmail.trim()}. Open its link here, or enter its one-time code below to sign this device in.`);
+    setPassportStatus("sent"); setPassportMessage(`Passport sign-in email sent to ${passportEmail.trim()}. Open its link on this same device. If the email includes a six-digit code, you may enter it below instead.`);
   };
   const verifyPassportCode = async () => {
     const supabase = getSupabaseBrowserClient();
