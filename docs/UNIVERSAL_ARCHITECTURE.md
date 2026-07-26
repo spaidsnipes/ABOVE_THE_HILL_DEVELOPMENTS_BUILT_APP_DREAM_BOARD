@@ -95,12 +95,12 @@ active-context selection. No training on private content.
 | 27 | Imagination Mode + Reality Check + mode switch | Imagine/Build/Research/Challenge/Refine/Publish, labeled outputs — implemented in `lib/companion.ts` + `app/ai-studio.tsx` |
 | 28 | Voice Learning | Voice Guardian samples, source-coverage (not a fake confidence score), quote vs imitation — implemented in `app/voice-guardian.tsx` + `supabase/dreamboard-voice-guardian.sql` |
 | 29 | Guest→Passport migration + accessibility pass | explicit migration preview/confirmation, safe retry protection, skip link/focus visibility, route scroll reset — implemented in `app/passport.tsx` + `app/page.tsx` |
-| 30 | Completion audit + polish | replay journeys, remove/mark any placeholder, consolidate docs |
-| 31 | Archive Scale | 7,000-page intake planning, resumable batches, source-preserving extraction |
-| 32 | Creator Ownership Export | portable creator-controlled export of work, sources, and lineage |
-| 33 | WOW World Bridge | truthful Passport handoff contract; no silent cross-app data sharing |
-| 34 | Launch Readiness | service-connection and privacy checks before release |
-| 35 | Production Journey Audit | first-use, return-to-work, import, and publish journeys replayed against real data |
+| 30 | Completion audit + polish | completed baseline: production shell test rejects sample/placeholder creative content; readiness screen shows connection state rather than inventing it |
+| 31 | Archive Scale | implemented: 7,000-file staging plan, durable private batches, 500-file resumable extraction windows, source-preserving extraction |
+| 32 | Creator Ownership Export | implemented: portable current-device workspace archive (notes, draft, versions) with explicit cloud-original limitations |
+| 33 | WOW World Bridge | implemented boundary: Lounge/Shop/Radio open only route URLs; no Passport handle, email, token, or private work is silently sent across apps |
+| 34 | Launch Readiness | implemented: service-connection and privacy checks before release, with direct Passport/import/export actions |
+| 35 | Production Journey Audit | automated core-flow audit covers clean server render, no sample creative content, archive-scale boundaries, creator-export scope, and WOW handoff privacy; signed-in Supabase replay remains a release checklist item |
 
 Milestone 21 folds in the recording-driven P1 defects (project-context
 truthfulness, route scroll reset on nav, responsive split-screen header/title).
