@@ -47,6 +47,10 @@ const starterDraft = "";
 const nav: Array<[string, ActiveView]> = [["⌂", "Creator’s Home"], ["⌖", "Search"], ["◇", "Passport"], ["✧", "Creator Compass"], ["▦", "Projects"], ["⇧", "Bulk Import"], ["✧", "Vision Vault"], ["⌕", "Knowledge Vault"], ["⌬", "Creative Graph"], ["✺", "Constellation"], ["✦", "Book Architect"], ["⌗", "Research"], ["◌", "Memory & Health"], ["◉", "Launch Readiness"], ["✎", "Writing Studio"], ["◫", "Version History"], ["▤", "Reader"], ["◉", "Audiobook Studio"], ["⇪", "Publishing"], ["◷", "Creative Timeline"], ["❦", "Legacy"], ["◫", "Creation Journal"], ["✦", "AI Studio"], ["◉", "Lounge"], ["▣", "Shop"], ["◌", "Radio"]];
 const shopItems: Array<{ id: string; name: string; kind: string; price: number; note: string }> = [];
 const wowWorldUrl = "https://wealthymindsets-pro.vercel.app";
+// Authentication links must always return to one permanent origin. A Vercel
+// deployment URL changes from deployment to deployment, and its browser cookie
+// cannot be shared with the public Dreamboard address.
+const dreamboardPassportUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://above-the-hill-developments-built-a.vercel.app";
 
 type CommunityStatus = "local" | "connecting" | "ready" | "needs-setup";
 
@@ -362,7 +366,7 @@ export default function Dreamboard() {
     setPassportStatus("sending");
     const { error } = await supabase.auth.signInWithOtp({
       email: passportEmail.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/?passport=ready`, shouldCreateUser: true },
+      options: { emailRedirectTo: `${dreamboardPassportUrl}/?passport=ready`, shouldCreateUser: true },
     });
     if (error) {
       setPassportStatus("error");
