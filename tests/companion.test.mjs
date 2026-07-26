@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CREATIVE_WORK_MODES, MASTER_PERSONAS, SKILLS, getCreativeWorkMode, modeInstruction, routeRequest, buildMessages, parseSegments, localFramework } from "../lib/companion.ts";
 
-test("provides 25 master personas and a skill registry", () => {
-  assert.equal(MASTER_PERSONAS.length, 25);
+test("provides 30 master personas and a skill registry", () => {
+  assert.equal(MASTER_PERSONAS.length, 30);
   assert.ok(SKILLS.length >= 25);
   for (const p of MASTER_PERSONAS) {
     assert.ok(p.name && p.summary && p.reasoningStyle && p.safety && p.skills.length, `persona ${p.id} incomplete`);

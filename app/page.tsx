@@ -365,7 +365,20 @@ export default function Dreamboard() {
       setPassportMessage(`Dreamboard could not send your Passport email: ${passportErrorMessage(error.message)}`);
       return;
     }
-    setPassportStatus("sent"); setPassportMessage(`Passport sign-in email sent to ${passportEmail.trim()}. Open the link in that email, then return here. If it is not visible in a few minutes, check Spam or Promotions.`);
+    setPassportStatus("sent"); setPassportMessage(`Passport sign-in email sent to ${passportEmail.trim()}. Open the link in the same browser where you want to use Dreamboard. If you open it on your phone, it signs in the phone — it cannot transfer that session to this desktop browser.`);
+  };
+  const checkPassportSession = async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) { setPassportStatus("needs-connection"); return; }
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+      setPassportStatus("sent");
+      setPassportMessage("No active Passport session was found in this browser yet. Open the email link in this same browser, then check again.");
+      return;
+    }
+    setPassportUser(data.user);
+    setPassportStatus("ready");
+    setPassportMessage("Your Passport is active in this browser. Choose your Passport handle to finish your creator identity.");
   };
   const localMigration: LocalMigrationSummary = useMemo(() => ({ notes: notes.filter(note => !note.cloudId).length, draftWords: draft.trim() ? draft.trim().split(/\s+/).length : 0, snapshots: snapshots.length }), [notes, draft, snapshots]);
   const migrateLocalWork = async () => {
@@ -475,7 +488,7 @@ export default function Dreamboard() {
       {active === "Version History" && <VersionHistory snapshots={snapshots} currentDraft={draft} onSave={saveSnapshot} onRestore={restoreSnapshot} onWrite={() => setActive("Writing Studio")} />}
       {active === "Reader" && <ReaderView draft={draft} chapterIndex={chapter} chapterTitles={chapterTitles} onSelectChapter={setChapter} projectTitle={writingDocument?.title || "Your project"} />}
       {active === "Audiobook Studio" && <AudiobookView user={passportUser} notify={setNotice} chapters={bookChapters.chapters} />}
-      {active === "Passport" && <PassportView user={passportUser} email={passportEmail} setEmail={setPassportEmail} handle={passportHandle} setHandle={setPassportHandle} status={passportStatus} message={passportMessage} onSend={() => void sendPassportMagicLink()} onSave={() => void savePassportProfile()} onSignOut={() => void signOutPassport()} notify={setNotice} localMigration={localMigration} migrationState={migrationState} onMigrateLocalWork={() => void migrateLocalWork()} />}
+      {active === "Passport" && <PassportView user={passportUser} email={passportEmail} setEmail={setPassportEmail} handle={passportHandle} setHandle={setPassportHandle} status={passportStatus} message={passportMessage} onSend={() => void sendPassportMagicLink()} onCheckSession={() => void checkPassportSession()} onSave={() => void savePassportProfile()} onSignOut={() => void signOutPassport()} notify={setNotice} localMigration={localMigration} migrationState={migrationState} onMigrateLocalWork={() => void migrateLocalWork()} />}
       {active === "Publishing" && <PublishingView user={passportUser} notify={setNotice} projects={projects.projects} chapters={bookChapters.chapters} chapterTitle={chapterTitle} draft={draft} projectTitle={writingDocument?.title || "Untitled project"} displayName={displayName || passportHandle} />}
       {active === "Legacy" && <LegacyView legacy={legacy} projects={projects.projects} visionEntries={visionVault.entries} snapshots={snapshots} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} onGo={setActive} />}
       {active === "AI Studio" && <AIStudioView user={passportUser} notify={setNotice} wisdomEnabled={wisdomMode} context={{ projectId: primaryProject?.id || null, projectTitle: primaryProject?.title || writingDocument?.title || null, chapterTitle, draftExcerpt: draft, sources: notes.slice(0, 3).map(note => ({ title: note.title, excerpt: note.body })), projectInstructions: primaryProject?.ai_instructions || "", writingVoice: primaryProject?.writing_voice || "" }} runs={companionRuns} onRunSaved={run => setCompanionRuns(previous => [run, ...previous].slice(0, 20))} onAppendToDraft={text => setDraft(previous => previous ? `${previous}\n\n${text}` : text)} />}
