@@ -1,4 +1,4 @@
-import { createPassportHandoffCode, hashPassportHandoffCode, passportHandoffConfig, readBearer, PASSPORT_HANDOFF_TTL_SECONDS } from "../../../../lib/passport-handoff";
+import { createPassportHandoffCode, hashPassportHandoffCode, passportHandoffConfig, readBearer, recordPassportAuditEvent, PASSPORT_HANDOFF_TTL_SECONDS } from "../../../../lib/passport-handoff";
 import { isWowWorldRoute } from "../../../../lib/wow-bridge";
 
 type AuthUser = { id?: string };
@@ -35,6 +35,7 @@ export async function POST(request: Request) {
     cache: "no-store",
   });
   if (!createResponse.ok) return Response.json({ error: "Dreamboard could not create the one-time Passport handoff." }, { status: 503 });
+  await recordPassportAuditEvent(identity.id, "handoff_issued", { destination: body.route });
 
   return Response.json({ code, route: body.route, expiresAt }, {
     headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" },

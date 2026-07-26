@@ -22,3 +22,20 @@ export function passportHandoffConfig() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return url && publishableKey && serviceRoleKey ? { url, publishableKey, serviceRoleKey } : null;
 }
+
+export async function recordPassportAuditEvent(userId: string, eventType: "handoff_issued" | "handoff_consumed", detail: Record<string, string> = {}) {
+  const config = passportHandoffConfig();
+  if (!config) return false;
+  const response = await fetch(`${config.url}/rest/v1/dreamboard_passport_audit_events`, {
+    method: "POST",
+    headers: {
+      apikey: config.serviceRoleKey,
+      Authorization: `Bearer ${config.serviceRoleKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ user_id: userId, event_type: eventType, detail }),
+    cache: "no-store",
+  });
+  return response.ok;
+}
