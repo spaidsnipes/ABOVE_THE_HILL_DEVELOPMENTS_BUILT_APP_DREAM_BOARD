@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
+import type { WowWorldRoute } from "../lib/wow-bridge";
 
 const wowWorldUrl = "https://wealthymindsets-pro.vercel.app";
 
@@ -103,11 +104,11 @@ export function useLounge(user: User | null, viewerLabel: string, notify: (messa
   return { posts, comments, blocked, status, publish, deletePost, loadComments, addComment, report, block };
 }
 
-function WowWorldSurface() {
-  return <section className="wow-world-surface"><div className="wow-surface-head"><div><span className="eyebrow">LIVE WOW WORLD SURFACE</span><h3>WOW World Lounge</h3><p>The live Lounge from the WOW World app, embedded here. Dreamboard&rsquo;s own community below is the native layer — this is an additional window, not the whole feature.</p></div><a className="ghost" href={`${wowWorldUrl}/lounge`} target="_blank" rel="noreferrer">Open full screen ↗</a></div><iframe title="WOW World Lounge" src={`${wowWorldUrl}/lounge`} loading="lazy" allow="autoplay; encrypted-media; clipboard-write" referrerPolicy="strict-origin-when-cross-origin" /></section>;
+function WowWorldSurface({ onOpenWowWorld }: { onOpenWowWorld: (route: WowWorldRoute) => void }) {
+  return <section className="wow-world-surface"><div className="wow-surface-head"><div><span className="eyebrow">LIVE WOW WORLD SURFACE</span><h3>WOW World Lounge</h3><p>The live Lounge from the WOW World app, embedded here. Dreamboard&rsquo;s own community below is the native layer — this is an additional window, not the whole feature.</p><small>The embedded surface never receives your Passport. Connect Passport opens a separate, one-time secure handoff.</small></div><div className="vision-actions"><button className="gold" onClick={() => onOpenWowWorld("lounge")}>Connect Passport &amp; open ↗</button><a className="ghost" href={`${wowWorldUrl}/lounge`} target="_blank" rel="noreferrer">Open without Passport ↗</a></div></div><iframe title="WOW World Lounge" src={`${wowWorldUrl}/lounge`} loading="lazy" allow="autoplay; encrypted-media; clipboard-write" referrerPolicy="strict-origin-when-cross-origin" /></section>;
 }
 
-export function LoungeView({ lounge, user, signedIn, onPassport }: { lounge: LoungeState; user: User | null; signedIn: boolean; onPassport: () => void }) {
+export function LoungeView({ lounge, user, signedIn, onPassport, onOpenWowWorld }: { lounge: LoungeState; user: User | null; signedIn: boolean; onPassport: () => void; onOpenWowWorld: (route: WowWorldRoute) => void }) {
   const [text, setText] = useState("");
   const [projectRef, setProjectRef] = useState("");
   const [openComments, setOpenComments] = useState<string | null>(null);
@@ -128,7 +129,7 @@ export function LoungeView({ lounge, user, signedIn, onPassport }: { lounge: Lou
 
   return <section className="view ecosystem-view">
     <div className="view-heading"><span className="eyebrow">DREAMBOARD LOUNGE</span><h2>Let the work find its people.</h2><p>Share creator updates in the World of Wealth. Every public moment is intentional — and yours to delete.</p></div>
-    <WowWorldSurface />
+    <WowWorldSurface onOpenWowWorld={onOpenWowWorld} />
     {lounge.status === "needs-setup" && <div className="connection-note"><b>Community setup needed:</b><span>Run supabase/dreamboard-core-schema.sql and dreamboard-lounge-community.sql to enable the native Dreamboard Lounge with comments, reporting, and blocking.</span></div>}
     <div className="lounge-layout">
       <section className="lounge-composer">

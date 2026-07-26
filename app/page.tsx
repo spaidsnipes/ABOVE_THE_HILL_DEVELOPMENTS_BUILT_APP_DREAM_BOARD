@@ -380,6 +380,50 @@ export default function Dreamboard() {
     setPassportStatus("ready");
     setPassportMessage("Your Passport is active in this browser. Choose your Passport handle to finish your creator identity.");
   };
+  const openWowWorldWithPassport = async (route: WowWorldRoute) => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase || !passportUser) {
+      setNotice("Set up Passport first, then Dreamboard can securely open WOW World for you.");
+      setActive("Passport");
+      return;
+    }
+    const pendingWindow = window.open("", "wow-world-passport");
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      pendingWindow?.close();
+      setNotice("Your Passport session needs to be refreshed before WOW World can be opened.");
+      setActive("Passport");
+      return;
+    }
+    try {
+      const response = await fetch("/api/wow/passport", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ route }),
+      });
+      const result = await response.json() as { code?: string; error?: string };
+      if (!response.ok || !result.code) throw new Error(result.error || "Dreamboard could not create a Passport handoff.");
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = `${wowWorldUrl}/api/passport/handoff`;
+      form.target = "wow-world-passport";
+      form.style.display = "none";
+      for (const [name, value] of Object.entries({ code: result.code, route })) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
+      form.remove();
+      setNotice(`A secure Passport handoff opened WOW World ${route}. It expires in 90 seconds and cannot carry your private Dreamboard material.`);
+    } catch (error) {
+      pendingWindow?.close();
+      setNotice(error instanceof Error ? error.message : "WOW World Passport handoff could not start.");
+    }
+  };
   const localMigration: LocalMigrationSummary = useMemo(() => ({ notes: notes.filter(note => !note.cloudId).length, draftWords: draft.trim() ? draft.trim().split(/\s+/).length : 0, snapshots: snapshots.length }), [notes, draft, snapshots]);
   const migrateLocalWork = async () => {
     const supabase = getSupabaseBrowserClient();
@@ -492,9 +536,9 @@ export default function Dreamboard() {
       {active === "Publishing" && <PublishingView user={passportUser} notify={setNotice} projects={projects.projects} chapters={bookChapters.chapters} chapterTitle={chapterTitle} draft={draft} projectTitle={writingDocument?.title || "Untitled project"} displayName={displayName || passportHandle} />}
       {active === "Legacy" && <LegacyView legacy={legacy} projects={projects.projects} visionEntries={visionVault.entries} snapshots={snapshots} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} onGo={setActive} />}
       {active === "AI Studio" && <AIStudioView user={passportUser} notify={setNotice} wisdomEnabled={wisdomMode} context={{ projectId: primaryProject?.id || null, projectTitle: primaryProject?.title || writingDocument?.title || null, chapterTitle, draftExcerpt: draft, sources: notes.slice(0, 3).map(note => ({ title: note.title, excerpt: note.body })), projectInstructions: primaryProject?.ai_instructions || "", writingVoice: primaryProject?.writing_voice || "" }} runs={companionRuns} onRunSaved={run => setCompanionRuns(previous => [run, ...previous].slice(0, 20))} onAppendToDraft={text => setDraft(previous => previous ? `${previous}\n\n${text}` : text)} />}
-      {active === "Lounge" && <LoungeView lounge={lounge} user={passportUser} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} />}
-      {active === "Shop" && <Shop total={cartTotal} count={cartCount} onAdd={addToCart} items={shopProducts} status={communityStatus} />}
-      {active === "Radio" && <Radio stream={radioStream} setStream={setRadioStream} playing={isPlaying} onToggle={toggleRadio} onPublish={publishRadio} audioRef={audio} status={communityStatus} />}
+      {active === "Lounge" && <LoungeView lounge={lounge} user={passportUser} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} onOpenWowWorld={openWowWorldWithPassport} />}
+      {active === "Shop" && <Shop total={cartTotal} count={cartCount} onAdd={addToCart} items={shopProducts} status={communityStatus} onOpenWowWorld={openWowWorldWithPassport} />}
+      {active === "Radio" && <Radio stream={radioStream} setStream={setRadioStream} playing={isPlaying} onToggle={toggleRadio} onPublish={publishRadio} audioRef={audio} status={communityStatus} onOpenWowWorld={openWowWorldWithPassport} />}
       {active === "Launch Readiness" && <LaunchReadinessView checks={readinessChecks} onExport={exportCreatorWorkspace} onPassport={() => setActive("Passport")} onImport={() => setActive("Bulk Import")} />}
       {active === "Settings" && <Settings displayName={displayName} setDisplayName={setDisplayName} theme={dreamTheme} setTheme={setDreamTheme} reduceMotion={reduceMotion} setReduceMotion={setReduceMotion} wisdomMode={wisdomMode} setWisdomMode={setWisdomMode} creatorSeason={creatorSeason} setCreatorSeason={setCreatorSeason} signedIn={Boolean(passportUser)} onSave={() => void saveCreatorSettings()} onPassport={() => setActive("Passport")} />}
     </section>
@@ -524,9 +568,9 @@ function VersionHistory({ snapshots, currentDraft, onSave, onRestore, onWrite }:
 
 
 
-function WowWorldSurface({ route, title, detail }: { route: WowWorldRoute; title: string; detail: string }) { const url = wowWorldDestination(wowWorldUrl, route); return <section className="wow-world-surface"><div className="wow-surface-head"><div><span className="eyebrow">LIVE WOW WORLD SURFACE</span><h3>{title}</h3><p>{detail}</p><small>{WOW_WORLD_BRIDGE_BOUNDARY}</small></div><a className="ghost" href={url} target="_blank" rel="noreferrer">Open full screen ↗</a></div><iframe title={title} src={url} loading="lazy" allow="autoplay; encrypted-media; clipboard-write" referrerPolicy="strict-origin-when-cross-origin" /></section>; }
+function WowWorldSurface({ route, title, detail, onOpenWowWorld }: { route: WowWorldRoute; title: string; detail: string; onOpenWowWorld: (route: WowWorldRoute) => void }) { const url = wowWorldDestination(wowWorldUrl, route); return <section className="wow-world-surface"><div className="wow-surface-head"><div><span className="eyebrow">LIVE WOW WORLD SURFACE</span><h3>{title}</h3><p>{detail}</p><small>{WOW_WORLD_BRIDGE_BOUNDARY}</small></div><div className="vision-actions"><button className="gold" onClick={() => onOpenWowWorld(route)}>Connect Passport &amp; open ↗</button><a className="ghost" href={url} target="_blank" rel="noreferrer">Open without Passport ↗</a></div></div><iframe title={title} src={url} loading="lazy" allow="autoplay; encrypted-media; clipboard-write" referrerPolicy="strict-origin-when-cross-origin" /></section>; }
 
 
-function Shop({ total, count, onAdd, items, status }: { total: number; count: number; onAdd: (itemId: string) => void; items: typeof shopItems; status: CommunityStatus }) { return <section className="view ecosystem-view"><div className="view-heading split"><div><span className="eyebrow">WOW WORLD SHOP</span><h2>Build the shelf around your work.</h2><p>Publish real books, art, journals, and future releases when they are ready.</p></div><div className="cart-summary"><span>YOUR CART</span><b>{count} item{count === 1 ? "" : "s"}</b><small>${total.toFixed(2)}</small></div></div><WowWorldSurface route="shop" title="WOW World Shop" detail="This is the live Shop experience from the WOW World app, open inside Dreamboard." />{items.length ? <div className="shop-grid">{items.map((item, index) => <article className={`shop-item tone-${index + 1}`} key={item.id}><div className="shop-art"><span>WOW<br />WORLD</span></div><div><span>{item.kind}</span><h3>{item.name}</h3><p>{item.note}</p><footer><b>${item.price.toFixed(2)}</b><button className="cart-button" onClick={() => onAdd(item.id)}>Add to cart +</button></footer></div></article>)}</div> : <section className="empty-workspace"><span>◫</span><h3>Your catalog is ready for real work.</h3><p>No sample products are shown here. Add your own product records when they are ready to publish.</p></section>}<div className="shop-connection"><span>{status === "ready" ? "SHARED CATALOG · CHECKOUT NEXT" : "PAYMENTS ARE NOT CONNECTED"}</span><p>{status === "ready" ? "The catalog comes from Dreamboard’s shared database. The cart works on this device; secure checkout needs the payment account you choose." : "Secure checkout comes next, after you decide which payment provider and account Dreamboard should use."}</p></div></section>; }
+function Shop({ total, count, onAdd, items, status, onOpenWowWorld }: { total: number; count: number; onAdd: (itemId: string) => void; items: typeof shopItems; status: CommunityStatus; onOpenWowWorld: (route: WowWorldRoute) => void }) { return <section className="view ecosystem-view"><div className="view-heading split"><div><span className="eyebrow">WOW WORLD SHOP</span><h2>Build the shelf around your work.</h2><p>Publish real books, art, journals, and future releases when they are ready.</p></div><div className="cart-summary"><span>YOUR CART</span><b>{count} item{count === 1 ? "" : "s"}</b><small>${total.toFixed(2)}</small></div></div><WowWorldSurface route="shop" title="WOW World Shop" detail="This is the live Shop experience from the WOW World app, open inside Dreamboard." onOpenWowWorld={onOpenWowWorld} />{items.length ? <div className="shop-grid">{items.map((item, index) => <article className={`shop-item tone-${index + 1}`} key={item.id}><div className="shop-art"><span>WOW<br />WORLD</span></div><div><span>{item.kind}</span><h3>{item.name}</h3><p>{item.note}</p><footer><b>${item.price.toFixed(2)}</b><button className="cart-button" onClick={() => onAdd(item.id)}>Add to cart +</button></footer></div></article>)}</div> : <section className="empty-workspace"><span>◫</span><h3>Your catalog is ready for real work.</h3><p>No sample products are shown here. Add your own product records when they are ready to publish.</p></section>}<div className="shop-connection"><span>{status === "ready" ? "SHARED CATALOG · CHECKOUT NEXT" : "PAYMENTS ARE NOT CONNECTED"}</span><p>{status === "ready" ? "The catalog comes from Dreamboard’s shared database. The cart works on this device; secure checkout needs the payment account you choose." : "Secure checkout comes next, after you decide which payment provider and account Dreamboard should use."}</p></div></section>; }
 
-function Radio({ stream, setStream, playing, onToggle, onPublish, audioRef, status }: { stream: string; setStream: (value: string) => void; playing: boolean; onToggle: () => void; onPublish: () => Promise<void>; audioRef: RefObject<HTMLAudioElement | null>; status: CommunityStatus }) { return <section className="view ecosystem-view radio-view"><div className="view-heading"><span className="eyebrow">WOW WORLD RADIO</span><h2>A home for the sound behind the work.</h2><p>The live WOW Radio player from the WOW World app is here inside Dreamboard. The control room below lets you publish the shared station you own.</p></div><WowWorldSurface route="radio" title="WOW Radio" detail="This is the live music player from the WOW World app, open inside Dreamboard." /><div className="radio-console"><div className="radio-record"><i /></div><div className="radio-main"><div className="live-label">{playing ? "● LIVE NOW" : status === "ready" ? "○ SHARED STATION READY" : "○ STATION SETUP"}</div><h3>WOW Radio control room</h3><p>{stream ? "Your connected station is ready to play." : "No stream connected yet — add your station URL below."}</p><div className="wave"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div><button className="radio-play" onClick={onToggle} aria-label={playing ? "Pause WOW Radio" : "Play WOW Radio"}>{playing ? "Ⅱ" : "▶"}</button><audio ref={audioRef} src={stream || undefined} /></div><div className="radio-connect"><span className="eyebrow">STATION CONNECTION</span><label>LICENSED STREAM URL<input value={stream} onChange={event => setStream(event.target.value)} placeholder="https://your-radio-stream…" /></label><p>This is a real audio player. Use only a stream you own or are licensed to broadcast.</p><button className="gold" onClick={() => void onPublish()}>Publish WOW Radio <b>→</b></button><button className="ghost" onClick={() => setStream("")}>Clear station</button></div></div></section>; }
+function Radio({ stream, setStream, playing, onToggle, onPublish, audioRef, status, onOpenWowWorld }: { stream: string; setStream: (value: string) => void; playing: boolean; onToggle: () => void; onPublish: () => Promise<void>; audioRef: RefObject<HTMLAudioElement | null>; status: CommunityStatus; onOpenWowWorld: (route: WowWorldRoute) => void }) { return <section className="view ecosystem-view radio-view"><div className="view-heading"><span className="eyebrow">WOW WORLD RADIO</span><h2>A home for the sound behind the work.</h2><p>The live WOW Radio player from the WOW World app is here inside Dreamboard. The control room below lets you publish the shared station you own.</p></div><WowWorldSurface route="radio" title="WOW Radio" detail="This is the live music player from the WOW World app, open inside Dreamboard." onOpenWowWorld={onOpenWowWorld} /><div className="radio-console"><div className="radio-record"><i /></div><div className="radio-main"><div className="live-label">{playing ? "● LIVE NOW" : status === "ready" ? "○ SHARED STATION READY" : "○ STATION SETUP"}</div><h3>WOW Radio control room</h3><p>{stream ? "Your connected station is ready to play." : "No stream connected yet — add your station URL below."}</p><div className="wave"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div><button className="radio-play" onClick={onToggle} aria-label={playing ? "Pause WOW Radio" : "Play WOW Radio"}>{playing ? "Ⅱ" : "▶"}</button><audio ref={audioRef} src={stream || undefined} /></div><div className="radio-connect"><span className="eyebrow">STATION CONNECTION</span><label>LICENSED STREAM URL<input value={stream} onChange={event => setStream(event.target.value)} placeholder="https://your-radio-stream…" /></label><p>This is a real audio player. Use only a stream you own or are licensed to broadcast.</p><button className="gold" onClick={() => void onPublish()}>Publish WOW Radio <b>→</b></button><button className="ghost" onClick={() => setStream("")}>Clear station</button></div></div></section>; }
