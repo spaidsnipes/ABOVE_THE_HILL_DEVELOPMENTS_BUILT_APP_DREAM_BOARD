@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
+import { EXTRACTION_WINDOW } from "../lib/archive-scale";
 
 export type SourceDocument = { id: string; batch_id: string; file_name: string; mime_type: string; storage_path: string; byte_size: number; extraction_status: string; extracted_chars: number | null; extraction_error: string | null };
 
@@ -125,7 +126,7 @@ export function ImportProcessingPanel({ pipeline, batches, signedIn }: { pipelin
   return <section className="batch-history import-processing">
     <div className="card-head"><div><span className="eyebrow">TEXT EXTRACTION · TXT, MARKDOWN, DOCX</span><h3>Turn preserved files into searchable material.</h3></div></div>
     {pipeline.ready === false && <div className="connection-note"><b>Extraction setup needed:</b><span>Run supabase/dreamboard-import-extraction.sql in your Supabase project to enable text extraction on imported files.</span></div>}
-    <p className="import-truth">Extraction runs in your browser on your own files: originals stay untouched in private storage, extracted text becomes a Knowledge Vault entry with a link back to its source file. PDFs and images are honestly marked unsupported until their extractors ship.</p>
+    <p className="import-truth">Extraction runs in your browser on your own files in resumable windows of up to {EXTRACTION_WINDOW.toLocaleString()} eligible files: originals stay untouched in private storage, extracted text becomes a Knowledge Vault entry with a link back to its source file. Run the next pass when this one finishes. PDFs and images are honestly marked unsupported until their extractors ship.</p>
     <div className="processing-batches">
       {batches.map(batch => { const docs = pipeline.documents[batch.id] || []; const isOpen = openBatch === batch.id; const active = pipeline.progress.running && pipeline.progress.batchId === batch.id; return <article key={batch.id} className="processing-batch">
         <div className="processing-batch-head"><div><b>{batch.label}</b><small>{batch.file_count.toLocaleString()} file{batch.file_count === 1 ? "" : "s"} preserved</small></div><div className="vision-actions"><button className="ghost" onClick={() => { setOpenBatch(isOpen ? null : batch.id); if (!isOpen) void pipeline.loadDocuments(batch.id); }}>{isOpen ? "Hide files" : "Show files"}</button><button className="gold" onClick={() => void pipeline.processBatch(batch.id)} disabled={pipeline.progress.running}>{active ? `Extracting ${pipeline.progress.done + 1}/${pipeline.progress.total}…` : "Extract text"} <b>→</b></button></div></div>

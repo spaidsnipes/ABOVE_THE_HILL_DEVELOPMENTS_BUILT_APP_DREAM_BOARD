@@ -26,10 +26,13 @@ import { LegacyView, useLegacy } from "./legacy";
 import { MemoryHealthView, useMemoryHealth } from "./memory-health";
 import { LoungeView, useLounge } from "./lounge";
 import { useActiveContext, MAX_ACTIVE } from "../lib/active-context";
+import { buildCreatorWorkspaceExport } from "../lib/creator-export";
+import { downloadCreatorWorkspace } from "./creator-ownership";
+import { LaunchReadinessView, type ReadinessCheck } from "./launch-readiness";
 
 type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[]; cloudId?: string; projectId?: string | null };
 type Snapshot = { id: number; label: string; body: string; chapter: number; date: string; words: number };
-type ActiveView = "Creator’s Home" | "Search" | "Creator Compass" | "Projects" | "Bulk Import" | "Vision Vault" | "Knowledge Vault" | "Creative Graph" | "Constellation" | "Book Architect" | "Research" | "Memory & Health" | "Writing Studio" | "Creative Timeline" | "Legacy" | "Creation Journal" | "Version History" | "Reader" | "Audiobook Studio" | "Publishing" | "AI Studio" | "Passport" | "Lounge" | "Shop" | "Radio" | "Settings";
+type ActiveView = "Creator’s Home" | "Search" | "Creator Compass" | "Projects" | "Bulk Import" | "Vision Vault" | "Knowledge Vault" | "Creative Graph" | "Constellation" | "Book Architect" | "Research" | "Memory & Health" | "Writing Studio" | "Creative Timeline" | "Legacy" | "Creation Journal" | "Version History" | "Reader" | "Audiobook Studio" | "Publishing" | "AI Studio" | "Passport" | "Lounge" | "Shop" | "Radio" | "Settings" | "Launch Readiness";
 type CreatorSeason = "planting" | "growing" | "building" | "blooming" | "harvest" | "stewardship" | "new-seeds";
 type DreamTheme = "emerald-gold" | "midnight-garden" | "midnight-gold" | "violet-gold" | "blue-gold";
 type ImportBatch = { id: string; label: string; status: string; file_count: number; uploaded_count: number; failed_count: number; total_bytes: number; created_at: string };
@@ -38,7 +41,7 @@ type WritingDocument = { id: string; title: string; chapter_number: number; body
 
 const initialNotes: Note[] = [];
 const starterDraft = "";
-const nav: Array<[string, ActiveView]> = [["⌂", "Creator’s Home"], ["⌖", "Search"], ["◇", "Passport"], ["✧", "Creator Compass"], ["▦", "Projects"], ["⇧", "Bulk Import"], ["✧", "Vision Vault"], ["⌕", "Knowledge Vault"], ["⌬", "Creative Graph"], ["✺", "Constellation"], ["✦", "Book Architect"], ["⌗", "Research"], ["◌", "Memory & Health"], ["✎", "Writing Studio"], ["◫", "Version History"], ["▤", "Reader"], ["◉", "Audiobook Studio"], ["⇪", "Publishing"], ["◷", "Creative Timeline"], ["❦", "Legacy"], ["◫", "Creation Journal"], ["✦", "AI Studio"], ["◉", "Lounge"], ["▣", "Shop"], ["◌", "Radio"]];
+const nav: Array<[string, ActiveView]> = [["⌂", "Creator’s Home"], ["⌖", "Search"], ["◇", "Passport"], ["✧", "Creator Compass"], ["▦", "Projects"], ["⇧", "Bulk Import"], ["✧", "Vision Vault"], ["⌕", "Knowledge Vault"], ["⌬", "Creative Graph"], ["✺", "Constellation"], ["✦", "Book Architect"], ["⌗", "Research"], ["◌", "Memory & Health"], ["◉", "Launch Readiness"], ["✎", "Writing Studio"], ["◫", "Version History"], ["▤", "Reader"], ["◉", "Audiobook Studio"], ["⇪", "Publishing"], ["◷", "Creative Timeline"], ["❦", "Legacy"], ["◫", "Creation Journal"], ["✦", "AI Studio"], ["◉", "Lounge"], ["▣", "Shop"], ["◌", "Radio"]];
 const shopItems: Array<{ id: string; name: string; kind: string; price: number; note: string }> = [];
 const wowWorldUrl = "https://wealthymindsets-pro.vercel.app";
 
@@ -414,6 +417,20 @@ export default function Dreamboard() {
     setNotice(error ? "Your settings could not save yet. Your local choices are still visible in this session." : "Your Dreamboard settings are saved to your creator account.");
   };
   const signOutPassport = async () => { const supabase = getSupabaseBrowserClient(); if (!supabase) return; await supabase.auth.signOut(); setPassportUser(null); setPassportHandle(""); setPassportStatus("ready"); setPassportMessage("Signed out of Passport on this device."); };
+  const exportCreatorWorkspace = () => {
+    downloadCreatorWorkspace(buildCreatorWorkspaceExport({
+      notes: notes.map(({ title, body, kind, date, tags }) => ({ title, body, kind, date, tags })),
+      draft,
+      snapshots: snapshots.map(({ label, body, chapter, date, words }) => ({ label, body, chapter, date, words })),
+    }));
+    setNotice("Creator workspace downloaded. Your originals and local workspace remain in place.");
+  };
+  const readinessChecks: ReadinessCheck[] = [
+    { label: "Passport", state: passportUser ? "ready" : "needs-action", detail: passportUser ? "Signed in on this device; private work can be connected to your account." : "Sign in by email before private cloud work is enabled." },
+    { label: "Private archive intake", state: passportUser ? "ready" : "needs-action", detail: passportUser ? "Original files are stored in private batches and TXT, Markdown, and DOCX have a real extraction path." : "Passport is required before private batches can be stored." },
+    { label: "Current-device workspace", state: "local", detail: `${notes.length} local source item${notes.length === 1 ? "" : "s"}, ${wordCount.toLocaleString()} draft word${wordCount === 1 ? "" : "s"}, and ${snapshots.length} version snapshot${snapshots.length === 1 ? "" : "s"} are available in this browser.` },
+    { label: "WOW World services", state: "needs-action", detail: "Lounge, Radio, and Shop are separate WOW World services. Dreamboard opens their real surfaces, but shared sign-in and payment setup must be completed before they can be described as one account." },
+  ];
 
   return <main className={`os-shell theme-${dreamTheme}${focusMode ? " focus-mode" : ""}${reduceMotion ? " reduce-motion" : ""}`}>
     <a className="skip-link" href="#dreamboard-main">Skip to workspace</a>
@@ -453,6 +470,7 @@ export default function Dreamboard() {
       {active === "Lounge" && <LoungeView lounge={lounge} user={passportUser} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} />}
       {active === "Shop" && <Shop total={cartTotal} count={cartCount} onAdd={addToCart} items={shopProducts} status={communityStatus} />}
       {active === "Radio" && <Radio stream={radioStream} setStream={setRadioStream} playing={isPlaying} onToggle={toggleRadio} onPublish={publishRadio} audioRef={audio} status={communityStatus} />}
+      {active === "Launch Readiness" && <LaunchReadinessView checks={readinessChecks} onExport={exportCreatorWorkspace} onPassport={() => setActive("Passport")} onImport={() => setActive("Bulk Import")} />}
       {active === "Settings" && <Settings displayName={displayName} setDisplayName={setDisplayName} theme={dreamTheme} setTheme={setDreamTheme} reduceMotion={reduceMotion} setReduceMotion={setReduceMotion} wisdomMode={wisdomMode} setWisdomMode={setWisdomMode} creatorSeason={creatorSeason} setCreatorSeason={setCreatorSeason} signedIn={Boolean(passportUser)} onSave={() => void saveCreatorSettings()} onPassport={() => setActive("Passport")} />}
     </section>
   </main>;
