@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MASTER_PERSONAS, SKILLS, routeRequest, buildMessages, parseSegments, localFramework } from "../lib/companion.ts";
+import { CREATIVE_WORK_MODES, MASTER_PERSONAS, SKILLS, getCreativeWorkMode, modeInstruction, routeRequest, buildMessages, parseSegments, localFramework } from "../lib/companion.ts";
 
 test("provides 25 master personas and a skill registry", () => {
   assert.equal(MASTER_PERSONAS.length, 25);
@@ -33,4 +33,15 @@ test("parseSegments labels output by category; local framework is honest", () =>
   const route = routeRequest("edit this", false);
   const local = localFramework("edit this", route, { projectTitle: null, chapterTitle: null, draftExcerpt: "one two three", sources: [] });
   assert.ok(local.some(s => /local framework/i.test(s.text)));
+});
+
+test("creative work modes carry a visible boundary into model and local output", () => {
+  assert.deepEqual(CREATIVE_WORK_MODES.map(mode => mode.id), ["imagine", "build", "research", "challenge", "refine", "publish"]);
+  assert.match(modeInstruction("research"), /Never invent citations/i);
+  assert.match(getCreativeWorkMode("imagine").boundary, /not evidence/i);
+  const route = routeRequest("what if I create a world", false);
+  const { system } = buildMessages("what if I create a world", route, { projectTitle: null, chapterTitle: null, draftExcerpt: "", sources: [] }, "imagine");
+  assert.match(system, /Imagine mode/);
+  const local = localFramework("what if I create a world", route, { projectTitle: null, chapterTitle: null, draftExcerpt: "", sources: [] }, "research");
+  assert.match(local[0].text, /Research mode selected/);
 });

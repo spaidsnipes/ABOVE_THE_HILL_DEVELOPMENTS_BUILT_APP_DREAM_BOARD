@@ -92,8 +92,8 @@ active-context selection. No training on private content.
 | 24 | Time Machine + Legacy Library | On This Day / evolution; finished-work archive |
 | 25 | Time Machine + Legacy Library | On This Day / evolution; finished-work archive |
 | 26 | Project Memory + Creative Health | inspectable/editable memory; gentle patterns, disable-able — implemented in `supabase/dreamboard-project-memory-health.sql` + `app/memory-health.tsx` |
-| 27 | Imagination Mode + Reality Check + mode switch | Imagine/Build/Research/Challenge/Refine/Publish, labeled outputs |
-| 28 | Voice Learning | Voice Guardian samples, confidence, quote vs imitation |
+| 27 | Imagination Mode + Reality Check + mode switch | Imagine/Build/Research/Challenge/Refine/Publish, labeled outputs — implemented in `lib/companion.ts` + `app/ai-studio.tsx` |
+| 28 | Voice Learning | Voice Guardian samples, source-coverage (not a fake confidence score), quote vs imitation — implemented in `app/voice-guardian.tsx` + `supabase/dreamboard-voice-guardian.sql` |
 | 29 | Guest→Passport migration + accessibility pass | safe migration preview; contrast/focus/labels; route scroll reset |
 | 30 | Completion audit + polish | replay journeys, remove/mark any placeholder, consolidate docs |
 

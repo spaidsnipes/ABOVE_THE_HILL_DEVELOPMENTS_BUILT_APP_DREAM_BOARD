@@ -44,6 +44,15 @@ const wowWorldUrl = "https://wealthymindsets-pro.vercel.app";
 
 type CommunityStatus = "local" | "connecting" | "ready" | "needs-setup";
 
+function passportErrorMessage(message: string) {
+  const detail = message.trim();
+  if (/redirect|url/i.test(detail)) return "add this live Dreamboard URL to Supabase Authentication → URL Configuration, then request a new link.";
+  if (/rate limit|security purposes/i.test(detail)) return "Supabase has temporarily limited email requests. Wait a few minutes, then request one fresh link.";
+  if (/dreamboard_passports|relation .* does not exist|schema cache/i.test(detail)) return "the Passport database foundation has not been installed yet. Run supabase/dreamboard-passports.sql once in Supabase SQL Editor.";
+  if (/duplicate|unique/i.test(detail)) return "that Passport handle is already claimed. Choose another one.";
+  if (/row-level security|permission denied/i.test(detail)) return "the Passport permissions need the current migration. Run supabase/dreamboard-passports.sql once, then try again.";
+  return detail || "Please try again.";
+}
 
 function readLocal<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -195,10 +204,10 @@ export default function Dreamboard() {
       setPassportUser(user);
       if (!user) return;
       const [passportResult, profileResult] = await Promise.all([
-        supabase.from("wm_id").select("wm_id").eq("user_id", user.id).maybeSingle(),
+        supabase.from("dreamboard_passports").select("handle").eq("user_id", user.id).maybeSingle(),
         supabase.from("dreamboard_profiles").select("display_name, wisdom_mode, creator_season, theme").eq("id", user.id).maybeSingle(),
       ]);
-      if (passportResult.data?.wm_id) setPassportHandle(passportResult.data.wm_id);
+      if (passportResult.data?.handle) setPassportHandle(passportResult.data.handle);
       if (profileResult.data) {
         setDisplayName(profileResult.data.display_name || "");
         setWisdomMode(profileResult.data.wisdom_mode);
@@ -330,8 +339,15 @@ export default function Dreamboard() {
     if (!supabase) { setPassportStatus("needs-connection"); setPassportMessage("Passport needs its Supabase connection values added in Vercel first."); return; }
     if (!passportEmail.trim()) { setPassportStatus("error"); setPassportMessage("Enter your email address first."); return; }
     setPassportStatus("sending");
-    const { error } = await supabase.auth.signInWithOtp({ email: passportEmail.trim(), options: { emailRedirectTo: window.location.origin } });
-    if (error) { setPassportStatus("error"); setPassportMessage(error.message); return; }
+    const { error } = await supabase.auth.signInWithOtp({
+      email: passportEmail.trim(),
+      options: { emailRedirectTo: `${window.location.origin}/?passport=ready`, shouldCreateUser: true },
+    });
+    if (error) {
+      setPassportStatus("error");
+      setPassportMessage(`Dreamboard could not send your Passport email: ${passportErrorMessage(error.message)}`);
+      return;
+    }
     setPassportStatus("sent"); setPassportMessage(`Passport sign-in email sent to ${passportEmail.trim()}. Open the link in that email, then return here. If it is not visible in a few minutes, check Spam or Promotions.`);
   };
   const savePassportProfile = async () => {
@@ -340,9 +356,13 @@ export default function Dreamboard() {
     if (!supabase || !passportUser) return;
     if (!/^[a-z0-9][a-z0-9_-]{2,29}$/.test(handle)) { setPassportStatus("error"); setPassportMessage("Choose 3–30 lowercase letters, numbers, _ or - for your Passport handle."); return; }
     setPassportStatus("saving");
-    const { error: wmError } = await supabase.from("wm_id").upsert({ user_id: passportUser.id, wm_id: handle }, { onConflict: "user_id" });
+    const { error: passportError } = await supabase.from("dreamboard_passports").upsert({ user_id: passportUser.id, handle }, { onConflict: "user_id" });
     const { error: profileError } = await supabase.from("dreamboard_profiles").upsert({ id: passportUser.id, display_name: displayName || handle, wisdom_mode: wisdomMode, creator_season: creatorSeason, theme: dreamTheme });
-    if (wmError || profileError) { setPassportStatus("error"); setPassportMessage("Your account is signed in, but Dreamboard could not save the Passport yet. Please try once more."); return; }
+    if (passportError || profileError) {
+      setPassportStatus("error");
+      setPassportMessage(`Your account is signed in, but Dreamboard could not save the Passport yet: ${passportErrorMessage(passportError?.message || profileError?.message || "Please try again.")}`);
+      return;
+    }
     setPassportStatus("saved"); setPassportMessage(`Passport @${handle} is ready across WOW World.`);
   };
   const saveCreatorSettings = async () => {
@@ -386,7 +406,7 @@ export default function Dreamboard() {
       {active === "Passport" && <PassportView user={passportUser} email={passportEmail} setEmail={setPassportEmail} handle={passportHandle} setHandle={setPassportHandle} status={passportStatus} message={passportMessage} onSend={() => void sendPassportMagicLink()} onSave={() => void savePassportProfile()} onSignOut={() => void signOutPassport()} notify={setNotice} />}
       {active === "Publishing" && <PublishingView user={passportUser} notify={setNotice} projects={projects.projects} chapters={bookChapters.chapters} chapterTitle={chapterTitle} draft={draft} projectTitle={writingDocument?.title || "Untitled project"} displayName={displayName || passportHandle} />}
       {active === "Legacy" && <LegacyView legacy={legacy} projects={projects.projects} visionEntries={visionVault.entries} snapshots={snapshots} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} onGo={setActive} />}
-      {active === "AI Studio" && <AIStudioView user={passportUser} notify={setNotice} wisdomEnabled={wisdomMode} context={{ projectTitle: primaryProject?.title || writingDocument?.title || null, chapterTitle, draftExcerpt: draft, sources: notes.slice(0, 3).map(note => ({ title: note.title, excerpt: note.body })), projectInstructions: primaryProject?.ai_instructions || "", writingVoice: primaryProject?.writing_voice || "" }} runs={companionRuns} onRunSaved={run => setCompanionRuns(previous => [run, ...previous].slice(0, 20))} onAppendToDraft={text => setDraft(previous => previous ? `${previous}\n\n${text}` : text)} />}
+      {active === "AI Studio" && <AIStudioView user={passportUser} notify={setNotice} wisdomEnabled={wisdomMode} context={{ projectId: primaryProject?.id || null, projectTitle: primaryProject?.title || writingDocument?.title || null, chapterTitle, draftExcerpt: draft, sources: notes.slice(0, 3).map(note => ({ title: note.title, excerpt: note.body })), projectInstructions: primaryProject?.ai_instructions || "", writingVoice: primaryProject?.writing_voice || "" }} runs={companionRuns} onRunSaved={run => setCompanionRuns(previous => [run, ...previous].slice(0, 20))} onAppendToDraft={text => setDraft(previous => previous ? `${previous}\n\n${text}` : text)} />}
       {active === "Lounge" && <LoungeView lounge={lounge} user={passportUser} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} />}
       {active === "Shop" && <Shop total={cartTotal} count={cartCount} onAdd={addToCart} items={shopProducts} status={communityStatus} />}
       {active === "Radio" && <Radio stream={radioStream} setStream={setRadioStream} playing={isPlaying} onToggle={toggleRadio} onPublish={publishRadio} audioRef={audio} status={communityStatus} />}

@@ -8,6 +8,38 @@
 export type OutputCategory = "evidence" | "interpretation" | "inference" | "speculation" | "recommendation" | "creative_suggestion" | "generated_draft";
 export type OutputSegment = { category: OutputCategory; text: string };
 
+// A work mode is a creator-selected lens, not a claim that the Companion has
+// changed modes of consciousness. It changes the instructions sent to a
+// connected model and remains visible with every result.
+export const CREATIVE_WORK_MODES = [
+  { id: "imagine", name: "Imagine", description: "Open possibilities without treating them as facts.", boundary: "Creative possibility — not evidence or a prediction." },
+  { id: "build", name: "Build", description: "Turn an approved direction into concrete, reviewable steps.", boundary: "Plan only — you decide what is made or changed." },
+  { id: "research", name: "Research", description: "Separate questions, sources, evidence, and uncertainty.", boundary: "Unverified claims stay unverified until you check real sources." },
+  { id: "challenge", name: "Challenge", description: "Test assumptions, gaps, risks, and counterarguments with care.", boundary: "Critique the work, never the creator." },
+  { id: "refine", name: "Refine", description: "Clarify structure, language, and continuity while protecting authorship.", boundary: "Suggestions only — no silent rewrite or overwrite." },
+  { id: "publish", name: "Publish", description: "Prepare creator-approved work for a real audience and release path.", boundary: "Readiness guidance — no claim that work is published or cleared." },
+] as const;
+
+export type CreativeWorkMode = (typeof CREATIVE_WORK_MODES)[number]["id"];
+export type CreativeWorkModeDefinition = (typeof CREATIVE_WORK_MODES)[number];
+
+export function getCreativeWorkMode(mode: CreativeWorkMode): CreativeWorkModeDefinition {
+  return CREATIVE_WORK_MODES.find(candidate => candidate.id === mode) ?? CREATIVE_WORK_MODES[1];
+}
+
+export function modeInstruction(mode: CreativeWorkMode): string {
+  const selected = getCreativeWorkMode(mode);
+  const instructions: Record<CreativeWorkMode, string> = {
+    imagine: "Generate distinct possibilities, metaphors, concepts, or directions. Label imaginative material as creative suggestion or speculation; do not make factual, scientific, spiritual, business, or outcome claims without provided evidence.",
+    build: "Convert only the creator's stated direction into a smallest useful plan: decisions, dependencies, next actions, and what still needs approval. Do not pretend work has been built.",
+    research: "Start from questions and provided sources. State what is directly supported, what is interpretation, and what needs verification. Never invent citations, experiments, or validation.",
+    challenge: "Name assumptions, failure modes, alternatives, contradictions, and questions fairly. Critique the work rather than the creator, and pair each concern with a test or decision.",
+    refine: "Offer bounded, reviewable improvements to clarity, structure, continuity, or voice. Preserve meaning and never silently replace the creator's words.",
+    publish: "Assess creator-approved material for audience, rights, format, accessibility, and release next steps. Never imply that a work is published, legally cleared, or ready without the creator confirming it.",
+  };
+  return `${selected.name} mode: ${selected.description} ${instructions[mode]} Boundary: ${selected.boundary}`;
+}
+
 // ── Skills: reusable capabilities personas draw on ──────────────────────────
 export type SkillCategory = "understand" | "structure" | "research" | "create" | "review" | "produce";
 export type Skill = { id: string; name: string; category: SkillCategory; description: string };
@@ -100,7 +132,7 @@ export function routeRequest(prompt: string, wisdomEnabled: boolean, pinnedPerso
   return { personas, skills, wisdom: wisdomEnabled, rationale };
 }
 
-export type CompanionContext = { projectTitle: string | null; chapterTitle: string | null; draftExcerpt: string; sources: Array<{ title: string; excerpt: string }>; projectInstructions?: string; writingVoice?: string };
+export type CompanionContext = { projectId?: string | null; projectTitle: string | null; chapterTitle: string | null; draftExcerpt: string; sources: Array<{ title: string; excerpt: string }>; voiceReferences?: Array<{ label: string; excerpt: string }>; projectInstructions?: string; writingVoice?: string };
 
 const CATEGORY_MARKERS: Array<[string, OutputCategory]> = [
   ["[EVIDENCE]", "evidence"], ["[INTERPRETATION]", "interpretation"], ["[INFERENCE]", "inference"],
@@ -108,14 +140,16 @@ const CATEGORY_MARKERS: Array<[string, OutputCategory]> = [
   ["[CREATIVE SUGGESTION]", "creative_suggestion"], ["[GENERATED DRAFT]", "generated_draft"],
 ];
 
-export function buildMessages(prompt: string, route: CompanionRoute, context: CompanionContext): { system: string; user: string } {
+export function buildMessages(prompt: string, route: CompanionRoute, context: CompanionContext, mode: CreativeWorkMode = "build"): { system: string; user: string } {
   const system = [
     "You are Dreamboard's Creative Companion. You help the creator think, organize, and improve clarity while preserving their authorship and voice. You never claim to have changed their work and never invent source material.",
     `Active personas (composed): ${route.personas.map(persona => `${persona.name} — ${persona.summary} Reasoning: ${persona.reasoningStyle}. Safety: ${persona.safety}`).join(" | ")}`,
     `Available skills: ${route.skills.map(skill => skill.name).join(", ")}.`,
+    modeInstruction(mode),
     route.wisdom ? "Wisdom lens: frame reflection around purpose, long-term impact, and the people affected. Never claim divine authority or make the choice for the creator." : "",
     context.projectInstructions ? `Project instructions from the creator: ${context.projectInstructions}` : "",
     context.writingVoice ? `Preserve this project's writing voice: ${context.writingVoice}` : "",
+    context.voiceReferences?.length ? `Creator-approved Voice Guardian references (use only as a transparent reference, never claim perfect imitation):\n${context.voiceReferences.map(reference => `- ${reference.label}: ${reference.excerpt.slice(0, 900)}`).join("\n")}` : "",
     "When multiple personas contribute, attribute which persona is speaking when it helps. Label every section of your reply by starting its line with exactly one of: [EVIDENCE] [INTERPRETATION] [INFERENCE] [SPECULATION] [RECOMMENDATION] [CREATIVE SUGGESTION] [GENERATED DRAFT]. Use [EVIDENCE] only for things directly present in the provided material.",
   ].filter(Boolean).join("\n");
   const user = [
@@ -143,14 +177,23 @@ export function parseSegments(text: string): OutputSegment[] {
 
 // Deterministic fallback when no model provider is connected. It routes,
 // reflects real context back, and says exactly what it is.
-export function localFramework(prompt: string, route: CompanionRoute, context: CompanionContext): OutputSegment[] {
+export function localFramework(prompt: string, route: CompanionRoute, context: CompanionContext, mode: CreativeWorkMode = "build"): OutputSegment[] {
   const segments: OutputSegment[] = [];
-  segments.push({ category: "evidence", text: `Routed to ${route.personas.map(persona => persona.name).join(" + ")} drawing on ${route.skills.slice(0, 5).map(skill => skill.name).join(", ")}. ${route.rationale}` });
+  const selectedMode = getCreativeWorkMode(mode);
+  segments.push({ category: "evidence", text: `${selectedMode.name} mode selected. ${selectedMode.boundary} Routed to ${route.personas.map(persona => persona.name).join(" + ")} drawing on ${route.skills.slice(0, 5).map(skill => skill.name).join(", ")}. ${route.rationale}` });
   if (context.projectInstructions) segments.push({ category: "evidence", text: `Applying this project's instructions: ${context.projectInstructions.slice(0, 160)}` });
   if (context.draftExcerpt) segments.push({ category: "evidence", text: `Your draft holds ${context.draftExcerpt.trim().split(/\s+/).length.toLocaleString()} words in the provided excerpt${context.chapterTitle ? ` of "${context.chapterTitle}"` : ""}.` });
   if (context.sources.length) segments.push({ category: "recommendation", text: `Ground the work in your own material first: ${context.sources.map(source => `"${source.title}"`).join(", ")}.` });
   const lead = route.personas[0];
-  segments.push({ category: "recommendation", text: lead?.id === "critic-red-team" ? "Name the single weakest assumption in this work and test it before anything else." : (lead?.domain === "research" || lead?.domain === "science") ? "State which claims are established versus still to be verified, then design the smallest test." : "Name the one thing your audience should carry away, then make the next move serve it." });
+  const modeRecommendation: Record<CreativeWorkMode, string> = {
+    imagine: "Create three clearly different possibilities, then keep only the one that still serves your stated purpose.",
+    build: "Choose one approved outcome, name its first dependency, and complete the smallest reversible next action.",
+    research: "State which claim needs verification first, name the real source needed, and leave the conclusion open until it is checked.",
+    challenge: "Name the weakest assumption, a credible alternative, and the smallest test that could change your mind.",
+    refine: "Choose one passage or decision to improve, state what must remain true, then make one reviewable revision.",
+    publish: "Confirm the audience, ownership/rights, format, and final approval before treating anything as ready to release.",
+  };
+  segments.push({ category: "recommendation", text: lead?.id === "critic-red-team" ? "Name the single weakest assumption in this work and test it before anything else." : (lead?.domain === "research" || lead?.domain === "science") ? "State which claims are established versus still to be verified, then design the smallest test." : modeRecommendation[mode] });
   segments.push({ category: "interpretation", text: `${route.personas.length} persona${route.personas.length === 1 ? "" : "s"} active. This is Dreamboard's local framework — deterministic routing only, no generative model connected. Add AI_BASE_URL, AI_API_KEY, and AI_MODEL in the hosted environment for generative review.` });
   return segments;
 }

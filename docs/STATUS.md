@@ -15,14 +15,14 @@ whenever a system changes tier.
   isn't provisioned yet. View lives in `app/vision-vault.tsx` (first
   extraction from page.tsx).
 
-- **Passport** — magic-link sign-in, handle claim (`wm_id` table), profile
+- **Passport** — magic-link sign-in, handle claim (`dreamboard_passports` table), profile
   (display name, wisdom mode, creator season, theme) in `dreamboard_profiles`.
   UX fully says "Passport". View extracted to `app/passport.tsx`
   (2026-07-22) with a creator-identity profile section (biography,
   disciplines — `supabase/dreamboard-passport-foundation.sql`) and a truthful
   roadmap card for future Passport systems. Internal state renamed
-  passportUser/passportHandle/etc.; only the `wm_id` table keeps its legacy
-  name for WOW World compatibility (ADR-0001).
+  passportUser/passportHandle/etc.; `wm_id` is preserved only for compatibility
+  when earlier WOW World records are migrated (ADR-0001).
 - **Knowledge Vault** — notes/journal/imports persist to
   `dreamboard_vault_entries` with localStorage fallback; search works.
 - **Creative Graph** (2026-07-22) — real visualization in
@@ -129,6 +129,8 @@ whenever a system changes tier.
 - **AI route** (`app/api/ai/route.ts`) — OpenAI-compatible chat proxy; honest
   503 until `AI_BASE_URL`/`AI_API_KEY`/`AI_MODEL` are set. Companion runs are
   logged to `dreamboard_companion_runs` either way.
+- **Creative Companion working modes** (2026-07-26, Milestone 27) — the AI Studio now has six creator-selected lenses: **Imagine, Build, Research, Challenge, Refine,** and **Publish**. The selected mode changes both the connected-model instructions and the no-model local framework, is displayed over the review panel, and is stored inside each run's existing JSON output — no migration needed. Every mode carries a visible boundary: imagined material is not evidence, research never invents citations, challenges critique the work rather than the person, and publishing never claims a release or clearance happened.
+- **Voice Guardian references** (2026-07-26, Milestone 28) — the AI Studio now lets a signed-in creator save project-scoped excerpts they own or have permission to use. The references are private, are only sent to the Companion when the creator explicitly enables the toggle, and can be removed at any time. The interface reports source coverage (reference count/words), never a misleading “voice confidence,” and explicitly does not train or clone a voice. Requires `supabase/dreamboard-voice-guardian.sql`.
 - **Shop / Radio (data layer)** — product catalog and station rows in
   Supabase; WOW World live surfaces embedded via iframe. Radio audio playback
   of a pasted licensed stream works. (Lounge is now a full native layer.)
