@@ -33,6 +33,7 @@ import { downloadCreatorWorkspace } from "./creator-ownership";
 import { LaunchReadinessView, type ReadinessCheck } from "./launch-readiness";
 import { WOW_WORLD_BRIDGE_BOUNDARY, wowWorldDestination, type WowWorldRoute } from "../lib/wow-bridge";
 import { ARCHIVE_STAGE_LIMIT, planArchiveIntake, validateArchiveSelection } from "../lib/archive-scale";
+import { cleanPassportRedirect, readPassportRedirect } from "../lib/passport-redirect";
 
 type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[]; cloudId?: string; projectId?: string | null };
 type Snapshot = { id: number; label: string; body: string; chapter: number; date: string; words: number };
@@ -130,7 +131,10 @@ export default function Dreamboard() {
   const [passportMessage, setPassportMessage] = useState("");
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("view") === "growth-rings") setActive("Growth Rings");
+    const timer = window.setTimeout(() => {
+      if (new URLSearchParams(window.location.search).get("view") === "growth-rings") setActive("Growth Rings");
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => {
     // Primary navigation opens a new page at its top, not the prior scroll.
@@ -239,6 +243,49 @@ export default function Dreamboard() {
     void supabase.auth.getUser().then(({ data }) => loadIdentity(data.user));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { void loadIdentity(session?.user ?? null); });
     return () => subscription.unsubscribe();
+  }, []);
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+    const redirect = readPassportRedirect(window.location.search);
+    if (redirect.kind === "none") return;
+    const clearCallbackUrl = () => window.history.replaceState({}, "", `${window.location.pathname}${cleanPassportRedirect(window.location.search)}${window.location.hash}`);
+    void (async () => {
+      if (redirect.kind === "error") {
+        setPassportStatus("error");
+        setPassportMessage(`Passport sign-in could not finish: ${passportErrorMessage(redirect.message)}`);
+        clearCallbackUrl();
+        setActive("Passport");
+        return;
+      }
+      if (redirect.kind === "exchange") {
+        setPassportStatus("sending");
+        const { data, error } = await supabase.auth.exchangeCodeForSession(redirect.code);
+        clearCallbackUrl();
+        if (error || !data.user) {
+          setPassportStatus("error");
+          setPassportMessage(`Passport sign-in could not finish: ${passportErrorMessage(error?.message || "the callback did not create a session")}`);
+          setActive("Passport");
+          return;
+        }
+        setPassportUser(data.user);
+      } else {
+        const { data } = await supabase.auth.getUser();
+        clearCallbackUrl();
+        if (!data.user) {
+          setPassportStatus("sent");
+          setPassportMessage("The email link opened, but this browser does not have a Passport session yet. Open the newest email link in this same browser, then check Passport again.");
+          setActive("Passport");
+          return;
+        }
+        setPassportUser(data.user);
+      }
+      setFrontDoorOpen(false);
+      setPassportStatus("ready");
+      setPassportMessage("Welcome back. Your Passport is active in this browser.");
+      setNotice("Passport restored. Your private Dreamboard is ready.");
+      setActive("Creator’s Home");
+    })();
   }, []);
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
