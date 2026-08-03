@@ -5,6 +5,71 @@
 
 ---
 
+## DB-RISK-007 — The designated highest-priority product has had **zero commits in six days** · HIGH · **OPEN**
+
+**Evidence — VERIFIED by Sentinel, 2026-08-03.**
+
+| | Dreamboard | WM Pro |
+|---|---|---|
+| `origin/main` HEAD | `f37f635` — **2026-07-28 15:43** | `f1ca9cd` — **2026-08-02 17:29** |
+| Last product commit | `2049bdd`, 2026-07-26 (`f37f635` is Sentinel's ops bus, not product work) | continuous through 2026-08-02 |
+| Employees dispatched | **none** | Forge, Noah, Micah, Nehemiah, Atlas, Research, Video Intelligence |
+| Open gates / tickets | 5 filed by Sentinel 07-28, **all untouched** | 7-gate map, 40 new Bible-derived tickets (`f20eb15`) |
+
+**Dreamboard is designated the company's highest-priority product.** For six days, 100% of
+company throughput has gone to WM Pro. Not a single Dreamboard ticket — including the two
+P0s — has been claimed, and no employee row lists Dreamboard work.
+
+**This is not a criticism of the WM Pro work**, which is real, well-evidenced, and driving
+toward a launch gate. It is a statement that **the stated priority and the actual allocation
+have been opposite for six days**, and nobody has recorded that as a decision. Priority that
+is never scheduled is not priority; it is an unexamined intention.
+
+**The three Dreamboard P0/P1 items still sit exactly where they were filed:**
+- **DB-OPS-P0-01** — 164 lines of superseded WIP awaiting a discard/keep ruling.
+- **DB-DOC-P0-01** — `docs/STATUS.md` now **12 days stale** (audit basis `4bbd51c`,
+  2026-07-22), still listing shipped systems as "not yet started."
+- **DB-RISK-005** — still no stated release objective for the top-priority product.
+
+**Resolution is a Founder decision, not an operations one.** Either:
+1. **Dreamboard genuinely is first** → dispatch at least one employee to it now, starting
+   with DB-DOC-P0-01 (unblocked, and the document every new employee reads first); or
+2. **WM Pro's launch gate is first until it clears** → say so in writing, and Dreamboard's
+   "highest priority" designation is suspended rather than quietly ignored.
+
+Either is defensible. **Drifting between them is the option that costs the most**, because
+work gets planned against a priority nobody is actually serving.
+
+---
+
+## DB-RISK-008 — WM Pro's launch-blocking RLS fix mutates **Dreamboard's** database · HIGH · **OPEN**
+
+**Evidence — VERIFIED, cross-referenced 2026-08-03.**
+
+WM Pro's go-live gate (Gate 4) lists `WM-SEC-P0-02` — apply the staged Supabase RLS fixes —
+as a hard launch blocker, recorded **"2 days silent — escalated."**
+
+That work targets Supabase project `zrzaifaxecwgpfrqctkp`, **which Dreamboard shares**
+(DB-RISK-003). The WM Pro gate presents it as a WM-Pro-only item. It is not.
+
+**Both directions are live risks:**
+- **If it stays unfixed:** always-true write/delete policies remain, and every
+  `dreamboard_*` table sits in a project with known-permissive policies.
+- **If it is fixed carelessly:** a policy change written for WM Pro's lounge tables lands in
+  the same project Dreamboard's Passport, vault, graph and audiobook tables live in. **No
+  Dreamboard employee is currently assigned to review it**, because no Dreamboard employee is
+  currently assigned to anything (DB-RISK-007).
+
+**Mitigation — binding, and it costs nothing to honour:** `WM-SEC-P0-02` must not be applied
+until (a) a backup exists, (b) DB-SEC-P1-01 has enumerated which tables Dreamboard actually
+owns and their live policies, and (c) a named reviewer signs off on the Dreamboard side.
+Requirement (b) is still **UNKNOWN** — it has never been run.
+
+This is the sanctioned cross-product exception under DB-DEC-002 and is recorded in both
+registers deliberately.
+
+---
+
 ## DB-RISK-001 — A duplicate-work incident has already happened · HIGH · **OPEN**
 
 **Evidence — VERIFIED by Sentinel, 2026-07-28.**
