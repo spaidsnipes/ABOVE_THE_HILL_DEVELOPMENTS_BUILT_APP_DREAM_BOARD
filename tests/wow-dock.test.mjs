@@ -10,3 +10,8 @@ test("Dreamboard loads the one WOW dock and has a WOW button in the header", () 
   assert.match(page, /className="wm-account wow-dock-btn" data-wow-dock="lounge"/);
   assert.doesNotMatch(page + layout, /WOWDock\.setPassport/, "no Passport token crosses into the dock (WOW_WORLD_BRIDGE_BOUNDARY)");
 });
+
+test("Dreamboard loads the one public Spaidbot embed (bottom-right, clear of the bottom-left WOW button)", () => {
+  const layout = readFileSync("app/layout.tsx", "utf8");
+  assert.match(layout, /<script src="https:\/\/mission\.abovethehilldev\.online\/spaidbot\.js" data-product="ath" defer \/>/);
+});

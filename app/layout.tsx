@@ -39,6 +39,10 @@ export default function RootLayout({
             Radio, Music, TV — never a copied room. Nothing loads from WOW until it is opened. Dreamboard lends no
             Passport token to it (WOW_WORLD_BRIDGE_BOUNDARY): the member signs in inside the dock. */}
         <script src="https://thewow.online/wow-dock.js" data-app="Dreamboard" data-side="left" defer />
+        {/* The Spaidbot button (Founder rule 2026-11-06: every ATH app shows BOTH buttons): the ONE public ATHOS embed,
+            bottom-right, labelled AI, sends nothing until asked. Its answers need this app's origin in the ATHOS CORS list
+            (index.js ORIGINS) the day Dreamboard gets a production address; localhost already works. */}
+        <script src="https://mission.abovethehilldev.online/spaidbot.js" data-product="ath" defer />
       </body>
     </html>
   );
