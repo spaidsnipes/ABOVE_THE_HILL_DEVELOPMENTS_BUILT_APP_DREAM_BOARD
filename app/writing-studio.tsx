@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { saveLabel, type SaveStatus } from "../lib/cloud-autosave";
 
 type Source = { id: number; title: string; body: string };
 
-export function WritingStudioView({ projectTitle, chapterNumber, chapterTitle, draft, setDraft, saveStatus, signedIn, onSaveVersion, onExport, onAskAI, sources, focusMode, setFocusMode, wordCount }: {
+export function WritingStudioView({ projectTitle, chapterNumber, chapterTitle, draft, setDraft, saveStatus, signedIn, onSaveVersion, onExport, onAskAI, sources, focusMode, setFocusMode, wordCount, onResolveConflict }: {
   projectTitle: string; chapterNumber: number; chapterTitle: string; draft: string; setDraft: (value: string) => void;
-  saveStatus: "saving" | "saved"; signedIn: boolean; onSaveVersion: () => void; onExport: () => void; onAskAI: () => void;
-  sources: Source[]; focusMode: boolean; setFocusMode: (value: boolean) => void; wordCount: number;
+  saveStatus: SaveStatus; signedIn: boolean; onSaveVersion: () => void; onExport: () => void; onAskAI: () => void;
+  sources: Source[]; focusMode: boolean; setFocusMode: (value: boolean) => void; wordCount: number; onResolveConflict?: (keepMine: boolean) => void;
 }) {
   const [showSources, setShowSources] = useState(false);
 
@@ -15,7 +16,8 @@ export function WritingStudioView({ projectTitle, chapterNumber, chapterTitle, d
     <div className="writing-toolbar">
       <div><span className="eyebrow">{projectTitle.toUpperCase()} / CHAPTER {chapterNumber}</span><h2>{chapterTitle}</h2></div>
       <div>
-        <span className="draft-status" role="status">{saveStatus === "saving" ? "● Saving…" : signedIn ? "● Saved on this device · versions in your cloud" : "● Saved on this device"}</span>
+        <span className="draft-status" role="status">{signedIn ? saveLabel(saveStatus) : saveLabel("local")}</span>
+        {signedIn && saveStatus === "conflict" && onResolveConflict && <><button className="ghost" onClick={() => onResolveConflict(true)}>Keep this copy</button><button className="ghost" onClick={() => onResolveConflict(false)}>Use the newer cloud copy</button></>}
         <button className="ghost" onClick={() => setShowSources(previous => !previous)} aria-pressed={showSources}>{showSources ? "Hide sources" : "Sources"}</button>
         <button className="ghost" onClick={() => setFocusMode(!focusMode)} aria-pressed={focusMode}>{focusMode ? "Exit focus" : "Focus mode"}</button>
         <button className="ghost" onClick={onSaveVersion}>Save version</button>

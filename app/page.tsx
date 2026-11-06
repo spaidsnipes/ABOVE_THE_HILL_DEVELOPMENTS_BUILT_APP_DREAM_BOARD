@@ -34,6 +34,7 @@ import { LaunchReadinessView, type ReadinessCheck } from "./launch-readiness";
 import { WOW_WORLD_BRIDGE_BOUNDARY, wowWorldDestination, type WowWorldRoute } from "../lib/wow-bridge";
 import { ARCHIVE_STAGE_LIMIT, planArchiveIntake, validateArchiveSelection } from "../lib/archive-scale";
 import { cleanPassportRedirect, readPassportRedirect } from "../lib/passport-redirect";
+import { createAutosave, supabaseStore, type SaveStatus } from "../lib/cloud-autosave";
 
 type Note = { id: number; title: string; body: string; kind: string; date: string; tags: string[]; cloudId?: string; projectId?: string | null };
 type Snapshot = { id: number; label: string; body: string; chapter: number; date: string; words: number };
@@ -108,7 +109,7 @@ export default function Dreamboard() {
   const [organized, setOrganized] = useState(false);
   const [organizeOpen, setOrganizeOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"saving" | "saved">("saved");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [notice, setNotice] = useState("Dreamboard is ready for your next real piece of work.");
   const [hydrated, setHydrated] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -208,12 +209,29 @@ export default function Dreamboard() {
   }, [passportUser]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-notes-v2", JSON.stringify(notes)); }, [notes, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-draft-v2", JSON.stringify(draft)); }, [draft, hydrated]);
+  // Real cloud autosave (lib/cloud-autosave.ts): debounced, one write at a time, "Saved" only on a server ack,
+  // and never overwriting a newer save from another device. Signed out = this device only.
+  const autosave = useRef<ReturnType<typeof createAutosave> | null>(null);
+  const autosaveOwner = useRef<string | null>(null);
+  const writingDocumentRef = useRef<WritingDocument | null>(null);
+  useEffect(() => { writingDocumentRef.current = writingDocument; }, [writingDocument]);
   useEffect(() => {
-    if (!hydrated) return;
-    const mark = window.setTimeout(() => setSaveStatus("saving"), 0);
-    const settle = window.setTimeout(() => setSaveStatus("saved"), 700);
-    return () => { window.clearTimeout(mark); window.clearTimeout(settle); };
-  }, [draft, hydrated]);
+    const supabase = getSupabaseBrowserClient();
+    if (!passportUser || !supabase) { autosave.current = null; autosaveOwner.current = null; return; } // signed out: the studio shows "this device only"
+    if (autosaveOwner.current === passportUser.id && autosave.current) return;
+    autosaveOwner.current = passportUser.id;
+    autosave.current = createAutosave({
+      store: supabaseStore(supabase), ownerId: passportUser.id, doc: writingDocumentRef.current,
+      title: () => writingDocumentRef.current?.title || "Untitled project",
+      onStatus: (status, doc) => { setSaveStatus(status); if (doc && doc.id !== writingDocumentRef.current?.id) setWritingDocument(doc as WritingDocument); },
+    });
+    const flush = () => { void autosave.current?.flush(); };
+    window.addEventListener("pagehide", flush);
+    return () => window.removeEventListener("pagehide", flush);
+  }, [passportUser]);
+  // When the cloud copy loads after sign-in, adopt it as the version this device last saw.
+  useEffect(() => { if (writingDocument && autosave.current && autosave.current.doc()?.id !== writingDocument.id) autosave.current.resolve(writingDocument, false); }, [writingDocument]);
+  useEffect(() => { if (hydrated && autosave.current) autosave.current.edit(draft, chapter); }, [draft, chapter, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-cart", JSON.stringify(cart)); }, [cart, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-radio-stream", JSON.stringify(radioStream)); }, [radioStream, hydrated]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("dreamboard-snapshots", JSON.stringify(snapshots)); }, [snapshots, hydrated]);
@@ -372,6 +390,17 @@ export default function Dreamboard() {
     setImportBatches(previous => [{ ...batch, status, uploaded_count: uploaded, failed_count: failed }, ...previous].slice(0, 8));
     setImporting(false);
     setNotice(failed ? `${uploaded.toLocaleString()} files were secured; ${failed.toLocaleString()} need another try. Your batch record is saved.` : `${uploaded.toLocaleString()} files are now privately secured in your Dreamboard vault. Text extraction and indexing come next.`);
+  };
+  const resolveConflict = (keepMine: boolean) => {
+    const supabase = getSupabaseBrowserClient(); const id = autosave.current?.doc()?.id;
+    if (!supabase || !id || !autosave.current) return;
+    void (async () => {
+      const { data } = await supabase.from("dreamboard_writing_documents").select("id,title,chapter_number,body,updated_at").eq("id", id).maybeSingle();
+      if (!data || !autosave.current) { setNotice("The cloud copy could not be read. Your text stays on this device."); return; }
+      const body = autosave.current.resolve(data as WritingDocument, keepMine);
+      if (!keepMine) setDraft(body);
+      setNotice(keepMine ? "Your copy is being saved over the newer cloud version." : "The newer cloud copy is now open.");
+    })();
   };
   const exportDraft = () => { const blob = new Blob([`# ${writingDocument?.title || "Untitled project"}\n\n## Chapter ${chapter + 1}: ${chapterTitle}\n\n${draft}`], { type: "text/markdown" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "dreamboard-chapter.md"; link.click(); URL.revokeObjectURL(url); setNotice("A Markdown copy of your chapter was downloaded."); };
   const saveSnapshot = () => { const words = draft.trim() ? draft.trim().split(/\s+/).length : 0; const customLabel = (window.prompt("Name this version (optional):", "") || "").trim().slice(0, 80); const snapshot: Snapshot = { id: Date.now(), label: customLabel ? `${customLabel} · Chapter ${chapter + 1}` : `Chapter ${chapter + 1} · ${chapterTitle}`, body: draft, chapter, date: new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }), words }; setSnapshots(prev => [snapshot, ...prev].slice(0, 20)); const supabase = getSupabaseBrowserClient(); const existingDocumentId = writingDocument?.id; const existingDocumentTitle = writingDocument?.title; if (!supabase || !passportUser) { setNotice("A protected local version was saved. Sign in with your Passport to add cloud history."); return; } void (async () => { let documentId = existingDocumentId; if (!documentId) { const { data } = await supabase.from("dreamboard_writing_documents").insert({ owner_id: passportUser.id, title: `Untitled project — ${chapterTitle}`, chapter_number: chapter + 1, body: draft }).select("id,title,chapter_number,body,updated_at").single(); if (data) { const next = data as WritingDocument; setWritingDocument(next); documentId = next.id; } } else { await supabase.from("dreamboard_writing_documents").update({ title: existingDocumentTitle || `Untitled project — ${chapterTitle}`, chapter_number: chapter + 1, body: draft, updated_at: new Date().toISOString() }).eq("id", documentId); }
@@ -603,7 +632,7 @@ export default function Dreamboard() {
       {active === "Research" && <ResearchView research={research} corrections={corrections} equations={equations} signedIn={Boolean(passportUser)} projectTitle={primaryProject?.title || null} onPassport={() => setActive("Passport")} onProjects={() => setActive("Projects")} />}
       {active === "Memory & Health" && <MemoryHealthView state={memoryHealth} signedIn={Boolean(passportUser)} projectTitle={primaryProject?.title || null} healthInput={{ projectSelected: Boolean(primaryProject), noteCount: notes.filter(note => note.projectId === activeContext.primaryId).length, draftWords: wordCount, importingCount: importBatches.filter(batch => ["uploading", "processing"].includes(batch.status)).length, unresolvedQuestionCount: research.questions.filter(question => ["open", "investigating"].includes(question.status)).length, unverifiedClaimCount: research.claims.filter(claim => claim.verification_status !== "verified").length, versionCount: snapshots.length }} onPassport={() => setActive("Passport")} onProjects={() => setActive("Projects")} onGo={setActive} />}
       {active === "Growth Rings" && <GrowthRingsView state={growthRings} signedIn={Boolean(passportUser)} onPassport={() => setActive("Passport")} />}
-      {active === "Writing Studio" && <WritingStudioView projectTitle={activeProjectLabel} chapterNumber={chapter + 1} chapterTitle={chapterTitle} draft={draft} setDraft={setDraft} saveStatus={saveStatus} signedIn={Boolean(passportUser)} onSaveVersion={saveSnapshot} onExport={exportDraft} onAskAI={() => setActive("AI Studio")} sources={notes.map(note => ({ id: note.id, title: note.title, body: note.body }))} focusMode={focusMode} setFocusMode={setFocusMode} wordCount={wordCount} />}
+      {active === "Writing Studio" && <WritingStudioView projectTitle={activeProjectLabel} chapterNumber={chapter + 1} chapterTitle={chapterTitle} draft={draft} setDraft={setDraft} saveStatus={saveStatus} signedIn={Boolean(passportUser)} onSaveVersion={saveSnapshot} onExport={exportDraft} onAskAI={() => setActive("AI Studio")} sources={notes.map(note => ({ id: note.id, title: note.title, body: note.body }))} focusMode={focusMode} setFocusMode={setFocusMode} wordCount={wordCount} onResolveConflict={resolveConflict} />}
       {active === "Creation Journal" && <section className="view journal-view"><div className="view-heading"><span className="eyebrow">CREATION JOURNAL</span><h2>Leave a note for your future self.</h2><p>The journal becomes private source material for your work, not a public performance.</p></div><div className="journal-card"><span>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase()}</span><textarea value={journal} onChange={e => setJournal(e.target.value)} placeholder="Today, I want to remember..." /><button className="gold" onClick={saveJournal} disabled={!journal.trim()}>Keep this note <b>→</b></button></div></section>}
       {active === "Projects" && <ProjectsView state={projects} signedIn={Boolean(passportUser)} hasDocument={Boolean(writingDocument)} onPassport={() => setActive("Passport")} onWrite={() => setActive("Writing Studio")} chaptersComplete={bookChapters.chapters.filter(item => item.status === "complete").length} chaptersTotal={bookChapters.chapters.length} wordCount={wordCount} user={passportUser} viewerLabel={displayName || passportHandle || (passportUser?.email?.split("@")[0] ?? "Collaborator")} notify={setNotice} />}
       {active === "Creator Compass" && <CreatorCompass season={creatorSeason} setSeason={setCreatorSeason} wisdomMode={wisdomMode} setWisdomMode={setWisdomMode} onSave={() => void saveCreatorSettings()} />}
