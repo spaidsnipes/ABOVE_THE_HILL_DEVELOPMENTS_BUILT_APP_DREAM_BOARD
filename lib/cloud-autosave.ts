@@ -8,6 +8,8 @@
 //   • Version safety: an update is conditional on the updated_at this device last saw. If another
 //     device (or tab) saved in between, zero rows match → "conflict"; nothing is overwritten and
 //     the local draft stays on this device until the creator chooses.
+//   • Idempotent first save: the document id is chosen on this device and the create is an upsert on
+//     that id, so a create whose reply was lost is retried onto the same row — never a duplicate.
 //   • Owner-only: rows are inserted with owner_id = the signed-in Passport. RLS
 //     (supabase/dreamboard-creator-workspace.sql: auth.uid() = owner_id) means another user's
 //     update matches zero rows, which this engine reports as conflict/denied — never as saved.
@@ -16,8 +18,9 @@ export type CloudDoc = { id: string; title: string; chapter_number: number; body
 export type SaveStatus = "local" | "idle" | "pending" | "saving" | "saved" | "conflict" | "error";
 
 export type Store = {
-  /** Insert a new document owned by ownerId; returns the stored row (server ack) or an error. */
-  insert(row: { owner_id: string; title: string; chapter_number: number; body: string }): Promise<{ data: CloudDoc | null; error: unknown }>;
+  /** Create the document under a client-chosen id, idempotently (upsert on id): a retry after a lost reply
+   *  writes the same row again instead of creating a duplicate. Returns the stored row (server ack) or an error. */
+  insert(row: { id: string; owner_id: string; title: string; chapter_number: number; body: string }): Promise<{ data: CloudDoc | null; error: unknown }>;
   /** Update only if updated_at still equals expectedUpdatedAt; returns the stored row, or data null when no row matched. */
   updateIfUnchanged(id: string, expectedUpdatedAt: string, patch: { body: string; chapter_number: number; updated_at: string }): Promise<{ data: CloudDoc | null; error: unknown }>;
 };
@@ -32,6 +35,8 @@ export type AutosaveOptions = {
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (handle: unknown) => void;
   onStatus?: (status: SaveStatus, doc: CloudDoc | null) => void;
+  /** Client-side document id for the first save (default crypto.randomUUID()). */
+  newId?: () => string;
 };
 
 export function createAutosave(o: AutosaveOptions) {
@@ -40,6 +45,9 @@ export function createAutosave(o: AutosaveOptions) {
   const setT = o.setTimer ?? ((fn: () => void, ms: number) => setTimeout(fn, ms));
   const clearT = o.clearTimer ?? ((h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>));
   let doc = o.doc;
+  // Chosen once, before the first write, and reused by every retry until the server acks the row.
+  let newDocId: string | null = null;
+  const makeId = o.newId ?? (() => crypto.randomUUID());
   let status: SaveStatus = "idle";
   let wanted: { body: string; chapter: number } | null = null; // newest edit not yet acked
   let timer: unknown = null;
@@ -55,7 +63,7 @@ export function createAutosave(o: AutosaveOptions) {
       try {
         const r = doc
           ? await o.store.updateIfUnchanged(doc.id, doc.updated_at, { body: send.body, chapter_number: send.chapter + 1, updated_at: now() })
-          : await o.store.insert({ owner_id: o.ownerId, title: o.title(), chapter_number: send.chapter + 1, body: send.body });
+          : await o.store.insert({ id: (newDocId ??= makeId()), owner_id: o.ownerId, title: o.title(), chapter_number: send.chapter + 1, body: send.body });
         if (r.error) { set("error"); return; }
         if (!r.data) { set("conflict"); return; } // someone else saved first, or RLS denied: never overwrite
         if (r.data.body !== send.body) { set("error"); return; } // ack must be exactly what was sent
@@ -109,7 +117,7 @@ export function supabaseStore(supabase: any): Store {
   const cols = "id,title,chapter_number,body,updated_at";
   return {
     async insert(row) {
-      const { data, error } = await supabase.from("dreamboard_writing_documents").insert(row).select(cols).single();
+      const { data, error } = await supabase.from("dreamboard_writing_documents").upsert(row, { onConflict: "id" }).select(cols).single();
       return { data: (data as CloudDoc) ?? null, error };
     },
     async updateIfUnchanged(id, expected, patch) {

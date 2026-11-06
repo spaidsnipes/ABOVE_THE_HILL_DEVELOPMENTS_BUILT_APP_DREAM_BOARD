@@ -11,7 +11,10 @@ function table() {
   const as = (uid) => ({
     async insert(row) {
       if (row.owner_id !== uid) return { data: null, error: { code: "42501", message: "new row violates row-level security policy" } };
-      const doc = { id: `doc-${++n}`, title: row.title, chapter_number: row.chapter_number, body: row.body, updated_at: stamp(), owner_id: uid };
+      // Upsert on the client-chosen id (PostgREST upsert onConflict: "id"); RLS still applies to the existing row.
+      const id = row.id ?? `doc-${++n}`, prior = rows.get(id);
+      if (prior && prior.owner_id !== uid) return { data: null, error: { code: "42501", message: "row-level security" } };
+      const doc = { id, title: row.title, chapter_number: row.chapter_number, body: row.body, updated_at: stamp(), owner_id: uid };
       rows.set(doc.id, doc); return { data: pub(doc), error: null };
     },
     async updateIfUnchanged(id, expected, patch) {
@@ -102,4 +105,21 @@ test("the Writing Studio label is driven by the real status, not a timer", () =>
   assert.doesNotMatch(page, /setSaveStatus\("saved"\), 700/);
   assert.match(page, /createAutosave\(/);
   assert.match(readFileSync(new URL("../app/writing-studio.tsx", import.meta.url), "utf8"), /saveLabel\(saveStatus\)/);
+});
+
+test("idempotent first save: a create whose reply is lost is retried onto the same row, never a duplicate", async () => {
+  const db = table(), t = timers(), base = db.as("alice"); let calls = 0; const ids = [];
+  const lossy = { ...base, insert: async (row) => { calls++; ids.push(row.id); const r = await base.insert(row); return calls === 1 ? { data: null, error: { message: "network: reply lost" } } : r; } };
+  const a = createAutosave({ store: lossy, ownerId: "alice", doc: null, title: () => "Book", newId: () => "11111111-1111-4111-8111-111111111111", ...t });
+  a.edit("first words", 0); await t.run(); await settle();
+  assert.equal(a.status(), "error", "a lost reply is never shown as saved"); assert.equal(db.rows.size, 1, "the server did store it");
+  a.edit("first words, more", 0); await t.run(); await a.flush(); await settle();
+  assert.equal(a.status(), "saved"); assert.equal(db.rows.size, 1, "no duplicate document");
+  assert.deepEqual(ids, ["11111111-1111-4111-8111-111111111111", "11111111-1111-4111-8111-111111111111"], "the retry reuses the same client id");
+  assert.equal([...db.rows.values()][0].body, "first words, more");
+  // The client id is a real UUID by default.
+  const b = createAutosave({ store: base, ownerId: "alice", doc: null, title: () => "B", ...t });
+  b.edit("x", 0); await t.run(); await b.flush(); await settle();
+  assert.match(b.doc().id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.match(readFileSync(new URL("../lib/cloud-autosave.ts", import.meta.url), "utf8"), /upsert\(row, \{ onConflict: "id" \}\)/);
 });
