@@ -1,0 +1,2 @@
+// Public browser values for WOW Passport (Supabase anon key: safe to ship; RLS guards every row).
+window.DB_CONFIG = { supabaseUrl: "https://zrzaifaxecwgpfrqctkp.supabase.co", supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpyemFpZmF4ZWN3Z3BmcnFjdGtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MDcwNTAsImV4cCI6MjA5NzQ4MzA1MH0.jGH2liUPwgxZM40G55UJPp0PKHZox-WQCHWHJpZNu8k" };
