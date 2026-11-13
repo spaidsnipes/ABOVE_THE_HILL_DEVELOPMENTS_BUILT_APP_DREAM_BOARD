@@ -99,12 +99,12 @@
   }
 
   // ---------- shell ----------
-  var NAV = [["home", "Home", "◈"], ["tree", "Money Tree", "✦"], ["orchard", "Orchard", "❦"], ["quantum", "Quantum-ply", "△"], ["belief", "Belief Chain", "◎"], ["today", "Today", "•"]];
+  var NAV = [["home", "Home", "◈"], ["book", "Book Studio", "❧"], ["tree", "Money Tree", "✦"], ["orchard", "Orchard", "❦"], ["quantum", "Quantum-ply", "△"], ["belief", "Belief Chain", "◎"], ["today", "Today", "•"]];
   function shell(inner, current) {
     var tier = state.access && state.access.tier;
     var nav = NAV.map(function (n) { return '<a href="#/' + n[0] + '"' + (n[0] === current ? ' aria-current="page"' : "") + ">" + n[1] + "</a>"; }).join("");
     var tabs = NAV.filter(function (n) { return n[0] !== "orchard"; }).map(function (n) {
-      return '<a href="#/' + n[0] + '"' + (n[0] === current ? ' aria-current="page"' : "") + '><span class="g" aria-hidden="true">' + n[2] + "</span>" + n[1].replace("Money ", "").replace(" Chain", "").replace("Quantum-ply", "Ply") + "</a>";
+      return '<a href="#/' + n[0] + '"' + (n[0] === current ? ' aria-current="page"' : "") + '><span class="g" aria-hidden="true">' + n[2] + "</span>" + n[1].replace("Money ", "").replace(" Chain", "").replace("Quantum-ply", "Ply").replace("Book Studio", "Book") + "</a>";
     }).join("");
     return '<header class="topbar"><a class="brand" href="#/home"><b>DREAM BOARD</b><span>by Above the Hill Developments</span></a>' +
       (state.user ? '<nav class="nav" aria-label="Dream Board">' + nav + '</nav><div class="who">' + (tier ? '<span class="tier" title="Your WOW Passport tier">' + esc(tier) + "</span>" : "") +
@@ -314,10 +314,25 @@
       try { await loadAll(); } catch (e) { $app.innerHTML = shell('<div class="wrap"><p class="err" style="margin-top:40px">Could not load your board: ' + esc(friendly(e)) + '</p><button class="btn" onclick="location.reload()">Try again</button></div>', ""); return; }
     }
     var r = route();
+    if (r.name === "book") return mountBook();
     var v = { home: viewHome, tree: viewTree, orchard: viewOrchard, quantum: viewQuantum, belief: viewBelief, today: viewToday }[r.name] || viewHome;
     var y = window.scrollY;
     $app.innerHTML = v(r.id);
     if (render.keepScroll) window.scrollTo(0, y); render.keepScroll = false;
+  }
+  // Book Studio is loaded only when it is opened (it is the heaviest room: engine + worker + IndexedDB).
+  var BOOK_V = "1112c", bookLoading = null;
+  function loadOnce(tag, attrs) {
+    return new Promise(function (res, rej) { var el = document.createElement(tag); Object.keys(attrs).forEach(function (k) { el[k] = attrs[k]; }); el.onload = res; el.onerror = function () { rej(new Error("Could not load " + (attrs.src || attrs.href))); }; document.head.appendChild(el); });
+  }
+  async function mountBook() {
+    if (!window.DBBook) {
+      if (!bookLoading) bookLoading = Promise.all([loadOnce("link", { rel: "stylesheet", href: "book.css?v=" + BOOK_V }), loadOnce("script", { src: "book-engine.js?v=" + BOOK_V })])
+        .then(function () { return loadOnce("script", { src: "book.js?v=" + BOOK_V }); });
+      $app.innerHTML = shell('<p class="loading">Opening Book Studio…</p>', "book");
+      try { await bookLoading; } catch (e) { bookLoading = null; $app.innerHTML = shell('<div class="wrap"><p class="err" style="margin-top:40px">' + esc(e.message) + '</p><button class="btn" onclick="location.reload()">Try again</button></div>', "book"); return; }
+    }
+    window.DBBook.mount($app, { sb: sb, user: function () { return state.user; }, access: function () { return state.access; }, shell: shell, esc: esc, toast: toast });
   }
   async function refresh() { render.keepScroll = true; await loadAll(); await render(); }
 
