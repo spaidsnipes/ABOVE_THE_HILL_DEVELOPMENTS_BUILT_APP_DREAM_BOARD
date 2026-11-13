@@ -173,7 +173,7 @@
     var plant = '<form class="glass pad" data-act="tree-add" style="margin-top:14px"><h3 style="text-align:left">Plant a Money Tree</h3><p class="note">Name one goal. You will fill its four lanes below.</p>' +
       '<div class="row"><input class="free" name="title" maxlength="120" placeholder="Goal, e.g. My coaching offer" aria-label="Goal name" required style="flex:1 1 240px"><button class="btn solid"' + (canPlant ? "" : " disabled") + ">Plant</button></div>" +
       (canPlant ? "" : '<p class="note" style="margin-top:8px">Your <b>' + esc(state.access.tier) + "</b> Passport plants " + lim + " tree. A Dream Board or Passport plan opens the full Orchard.</p>") + "</form>";
-    if (!tree) return shell('<div class="wrap"><h2 class="title">The Money Tree</h2><p class="sub">Four systems for each goal. Down comes before up: the roots grow before the shoot reaches the light.</p>' + plant + "</div>", "tree");
+    if (!tree) return shell('<div class="wrap"><h2 class="title">The Money Tree</h2><p class="sub">Four systems for each goal. Down comes before up: the roots grow before the shoot reaches the light.</p>' + plant + callsCard("roots") + "</div>", "tree");
     var picks = state.trees.map(function (t) { return '<a class="btn small"' + (t.id === tree.id ? ' style="background:rgba(217,181,108,0.2)"' : "") + ' href="#/tree/' + t.id + '">' + esc(t.title) + "</a>"; }).join("");
     var lanes = LANES.map(function (L) {
       var its = state.items.filter(function (i) { return i.tree_id === tree.id && i.lane === L[0]; });
@@ -191,7 +191,7 @@
       '<div class="tree-stage"><div class="plate" style="background-image:url(art-money-tree.jpg)"></div>' +
       '<div class="tree-head"><div><div class="lbl">Goal</div><input class="free" style="font-family:var(--serif);font-size:24px;color:var(--gold-hi)" data-act="tree-title" data-id="' + tree.id + '" value="' + esc(tree.title) + '" maxlength="120" aria-label="Goal name"></div>' +
       '<div><div class="lbl">Grown so far</div><div class="row"><span class="stat" style="font-size:24px">' + STAGE_LABEL[stage] + '</span><span class="spacer"></span><button class="btn small" data-act="tree-del" data-id="' + tree.id + '">Remove tree</button></div><p class="note" style="margin:4px 0 0">Stage comes from the cards you have checked off, lane by lane.</p></div></div>' +
-      '<div class="lanes">' + lanes + "</div></div>" + (canPlant ? plant : "") + "</div>", "tree");
+      callsCard("roots") + '<div class="lanes">' + lanes + "</div></div>" + (canPlant ? plant : "") + "</div>", "tree");
   }
 
   function viewOrchard() {
@@ -303,7 +303,7 @@
       '<div class="field"><label for="tt">For which Money Tree</label><select id="tt" class="free" name="tree">' + treeOpts + '</select></div><button class="btn small">' + (t ? "Update step" : "Save step") + "</button></form>" +
       '<button class="btn started-btn' + (t && t.started_at ? " is-on" : "") + '" data-act="step-start"' + (t ? "" : " disabled") + ">" + (t && t.started_at ? "Started ✓" : "I started") + "</button>" +
       '<p class="note">' + (t && t.started_at ? "Started at " + new Date(t.started_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : t ? "Press it the moment you begin, not when you finish." : "Name the step first.") + "</p>" +
-      seedsRow(28) + '<p class="note" style="margin-top:8px">' + started + " day" + (started === 1 ? "" : "s") + " started so far (gold seeds). Dim seeds were planned but not started.</p></div></div>", "today");
+      seedsRow(28) + '<p class="note" style="margin-top:8px">' + started + " day" + (started === 1 ? "" : "s") + " started so far (gold seeds). Dim seeds were planned but not started.</p></div>" + callsCard("today") + "</div>", "today");
   }
 
   // ---------- render ----------
@@ -320,6 +320,68 @@
     $app.innerHTML = v(r.id);
     if (render.keepScroll) window.scrollTo(0, y); render.keepScroll = false;
   }
+  // ---------- Today's calls (Founder order 2026-11-12): King + Queen only ----------
+  // Read-only counts + next leads from the ATHOS Call Desk. The office checks the signed Passport token, the server
+  // Founder grant and a 6-digit authenticator step-up (aal2) on every read; nothing is cached or stored here.
+  var CALLS_URL = "https://mission.abovethehilldev.online/api/dreamboard/calls";
+  var calls = { status: "idle", data: null, msg: "", at: 0 };
+  function isFounder() { return !!(state.access && state.access.tier === "founder"); }
+  async function loadCalls(force) {
+    if (!isFounder() || calls.status === "loading") return;
+    if (!force && calls.at && Date.now() - calls.at < 60000) return;
+    calls.status = "loading"; paintCalls();
+    try {
+      var aal = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+      var lvl = aal && aal.data;
+      if (!lvl || lvl.currentLevel !== "aal2") { calls.status = lvl && lvl.nextLevel === "aal2" ? "need-code" : "no-factor"; return paintCalls(); }
+      var sess = (await sb.auth.getSession()).data.session;
+      var r = await fetch(CALLS_URL, { headers: { authorization: "Bearer " + sess.access_token }, cache: "no-store" });
+      var b = await r.json().catch(function () { return {}; });
+      if (r.status === 403 && b.error === "STEP_UP_REQUIRED") { calls.status = "need-code"; return paintCalls(); }
+      if (!r.ok) { calls.status = "error"; calls.msg = b.error === "FOUNDER_GRANT_REQUIRED" ? "This Passport has no Founder grant in the office." : "The office answered " + r.status + (b.error ? " (" + b.error + ")" : "") + "."; return paintCalls(); }
+      calls.data = b; calls.status = "ok"; calls.at = Date.now();
+    } catch (e) { calls.status = "error"; calls.msg = "Could not reach the office: " + (e.message || e); }
+    paintCalls();
+  }
+  function callsInner(where) {
+    var title = where === "roots" ? "Roots · today's dials" : "Today's calls";
+    var head = '<div class="row" style="align-items:baseline"><h3 style="text-align:left;margin:0">' + title + '</h3><span class="spacer"></span><span class="tier" title="Only King and Queen see this">Founders only</span></div>';
+    if (calls.status === "need-code") return head + '<p class="note" style="text-align:left">Your office protects the Call Desk with your authenticator. Enter the 6-digit code once to show today\'s calls here.</p><form class="row" data-act="calls-unlock"><input class="free" id="cc" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="123456" aria-label="6-digit authenticator code" style="max-width:160px" required><button class="btn small solid">Show my calls</button></form>';
+    if (calls.status === "no-factor") return head + '<p class="note" style="text-align:left">This Passport has no authenticator yet, so the office will not share the Call Desk here. Set it up from the Founders office sign-in, then come back.</p>';
+    if (calls.status === "error") return head + '<p class="err" style="text-align:left">' + esc(calls.msg) + '</p><button class="btn small" data-act="calls-load">Try again</button>';
+    if (calls.status !== "ok" || !calls.data) return head + '<p class="note" style="text-align:left">Reading your Call Desk…</p>';
+    var d = calls.data, t = d.today || {}, p = d.pipeline || {}, by = t.byFounder || {};
+    var stat = function (n, l) { return '<div><span class="stat" style="font-size:30px">' + num(n || 0) + '</span><div class="lbl">' + l + "</div></div>"; };
+    var who = Object.keys(by).map(function (k) { return esc(k) + " " + by[k]; }).join(" · ");
+    return head + '<div class="calls-grid">' + stat(t.calls, "calls made today") + stat(t.leads, "leads touched") + stat(p.callbacksDue, "call-backs due") + stat(p.notCalled, "never called") + stat(p.interested, "interested") + stat(p.won, "won") + "</div>" +
+      (who ? '<p class="note" style="text-align:left;margin:6px 0 0">Today: ' + who + "</p>" : "") +
+      '<h3 style="text-align:left;font-size:17px;margin:14px 0 6px">Next up</h3>' +
+      ((d.nextUp || []).length ? '<ol class="calls-next">' + d.nextUp.map(function (x) {
+        return "<li><b>" + (x.leadNo ? "#" + x.leadNo + " " : "") + esc(x.name) + "</b>" + (x.city ? " · " + esc(x.city) : "") + '<div class="note">' + esc([x.due ? "Due " + x.due : "", x.next, x.status, x.last ? "last: " + x.last : ""].filter(Boolean).join(" · ")) + "</div></li>";
+      }).join("") + "</ol>" : '<p class="note" style="text-align:left">Nobody is waiting. Every lead is called, won or closed out.</p>') +
+      '<div class="row" style="margin-top:10px"><a class="btn small solid" href="' + esc(d.desk) + '" target="_blank" rel="noopener">Open the Call Desk</a><button class="btn small" data-act="calls-load">Refresh</button><span class="note">Read-only · ' + esc(d.day || "") + " CT</span></div>";
+  }
+  function callsCard(where) {
+    if (!isFounder()) return "";
+    setTimeout(function () { loadCalls(false); }, 0);
+    return '<section class="glass pad calls-card" id="calls-card" data-where="' + where + '" aria-live="polite" style="margin-top:16px">' + callsInner(where) + "</section>";
+  }
+  function paintCalls() { var el = document.getElementById("calls-card"); if (el) el.innerHTML = callsInner(el.dataset.where); }
+  document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest('[data-act="calls-load"]')) loadCalls(true); });
+  document.addEventListener("submit", async function (e) {
+    var f = e.target; if (f.dataset.act !== "calls-unlock") return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    var code = (document.getElementById("cc").value || "").trim();
+    try {
+      var fl = await sb.auth.mfa.listFactors();
+      var totp = ((fl.data && fl.data.totp) || []).find(function (x) { return x.status === "verified"; });
+      if (!totp) { calls.status = "no-factor"; return paintCalls(); }
+      var v = await sb.auth.mfa.challengeAndVerify({ factorId: totp.id, code: code });
+      if (v.error) { toast(v.error.message || "That code did not work.", true); return; }
+      calls.at = 0; await loadCalls(true);
+    } catch (err) { toast(friendly(err), true); }
+  }, true);
+
   // Book Studio is loaded only when it is opened (it is the heaviest room: engine + worker + IndexedDB).
   var BOOK_V = "1112c", bookLoading = null;
   function loadOnce(tag, attrs) {

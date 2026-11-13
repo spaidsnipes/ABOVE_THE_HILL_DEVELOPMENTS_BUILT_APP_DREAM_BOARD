@@ -326,3 +326,11 @@ footer.foot { max-width: 1240px; margin: 34px auto 0; padding: 16px 28px; border
   .side { grid-column: 1; grid-row: auto; }
   .grid-home .col:nth-child(1) { grid-column: 1; }
 }
+
+/* Today's calls (Founders only) */
+.calls-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.calls-grid .lbl { font-size: 11px; }
+.calls-next { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.calls-next li { color: var(--cream); }
+.calls-next .note { margin: 2px 0 0; text-align: left; }
+@media (max-width: 760px) { .calls-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
