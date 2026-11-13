@@ -9,6 +9,7 @@
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce", storageKey: "dreamboard-passport" }
   });
 
+  try { var th = localStorage.getItem("dreamboard-theme"); if (th) document.documentElement.dataset.theme = th; if (localStorage.getItem("dreamboard-reduce-motion") === "1") document.documentElement.dataset.motion = "reduce"; } catch (e) { /* storage blocked */ }
   var state = { user: null, access: null, trees: [], items: [], cards: [], steps: [], plans: [], weeks: [], beliefs: [], loaded: false };
   var $app = document.getElementById("app");
   var STEPS = [
@@ -99,12 +100,12 @@
   }
 
   // ---------- shell ----------
-  var NAV = [["home", "Home", "◈"], ["book", "Book Studio", "❧"], ["tree", "Money Tree", "✦"], ["orchard", "Orchard", "❦"], ["quantum", "Quantum-ply", "△"], ["belief", "Belief Chain", "◎"], ["today", "Today", "•"]];
+  var NAV = [["home", "Home", "◈"], ["rooms", "All rooms", "▦"], ["book", "Book Studio", "❧"], ["tree", "Money Tree", "✦"], ["orchard", "Orchard", "❦"], ["quantum", "Quantum-ply", "△"], ["belief", "Belief Chain", "◎"], ["today", "Today", "•"]];
   function shell(inner, current) {
     var tier = state.access && state.access.tier;
-    var nav = NAV.map(function (n) { return '<a href="#/' + n[0] + '"' + (n[0] === current ? ' aria-current="page"' : "") + ">" + n[1] + "</a>"; }).join("");
-    var tabs = NAV.filter(function (n) { return n[0] !== "orchard"; }).map(function (n) {
-      return '<a href="#/' + n[0] + '"' + (n[0] === current ? ' aria-current="page"' : "") + '><span class="g" aria-hidden="true">' + n[2] + "</span>" + n[1].replace("Money ", "").replace(" Chain", "").replace("Quantum-ply", "Ply").replace("Book Studio", "Book") + "</a>";
+    var nav = NAV.filter(function (n) { return n[0] !== "orchard" && n[0] !== "quantum"; }).map(function (n) { return '<a href="#/' + n[0] + '"' + (n[0] === current ? ' aria-current="page"' : "") + ">" + n[1] + "</a>"; }).join("");
+    var tabs = NAV.filter(function (n) { return n[0] !== "orchard" && n[0] !== "quantum" && n[0] !== "belief"; }).map(function (n) {
+      return '<a href="#/' + n[0] + '"' + (n[0] === current ? ' aria-current="page"' : "") + '><span class="g" aria-hidden="true">' + n[2] + "</span>" + n[1].replace("Money ", "").replace(" Chain", "").replace("Quantum-ply", "Ply").replace("Book Studio", "Book").replace("All rooms", "Rooms") + "</a>";
     }).join("");
     return '<header class="topbar"><a class="brand" href="#/home"><b>DREAM BOARD</b><span>by Above the Hill Developments</span></a>' +
       (state.user ? '<nav class="nav" aria-label="Dream Board">' + nav + '</nav><div class="who">' + (tier ? '<span class="tier" title="Your WOW Passport tier">' + esc(tier) + "</span>" : "") +
@@ -315,11 +316,78 @@
     }
     var r = route();
     if (r.name === "book") return mountBook();
+    if (r.name === "r") return mountRoom(r.id);
+    if (r.name === "rooms") { $app.innerHTML = viewRooms(); return; }
     var v = { home: viewHome, tree: viewTree, orchard: viewOrchard, quantum: viewQuantum, belief: viewBelief, today: viewToday }[r.name] || viewHome;
     var y = window.scrollY;
     $app.innerHTML = v(r.id);
     if (render.keepScroll) window.scrollTo(0, y); render.keepScroll = false;
   }
+  // ---------- Dream Board OS: every room from the original Dream Board, in one place (Founder 2026-11-12: "no split brain") ----------
+  // kind: room = board/rooms/<id>.js (#/r/<id>) · native = already a Dream Board view · dock = the ONE WOW dock room · link = opens WOW
+  var ROOMS = [
+    ["Create", [
+      ["vision", "Vision Vault", "Catch every idea and grow it from inbox to project.", "room"],
+      ["book", "Book Studio", "Organize decades of writing into chapters — never ghostwritten.", "native", "#/book"],
+      ["writing", "Writing Studio", "Draft chapters and documents with focus mode, versions and compare.", "room"],
+      ["voice", "Voice Guardian", "Keep samples of your real voice so every draft stays yours.", "room"]]],
+    ["Know", [
+      ["knowledge", "Knowledge Vault", "Notes, journals and imports — searchable, with Organize My Notes.", "room"],
+      ["graph", "Creative Graph", "See how your ideas, sources and projects connect.", "room"],
+      ["research", "Research Workspace", "Evidence by class, the Correction Ledger and the Equation Lab.", "room"],
+      ["search", "Universal Search", "One search across every room.", "room"]]],
+    ["Build", [
+      ["projects", "Projects", "Project templates, focus, memory and the Finishing Engine.", "room"],
+      ["constellation", "Constellation", "Your projects as stars, sized by real material.", "room"],
+      ["tree", "Money Tree · Orchard", "Taproot, roots, shoot and fruit for every goal.", "native", "#/tree"],
+      ["quantum", "Quantum-ply", "Quantify → Multiply, week by week.", "native", "#/quantum"]]],
+    ["Grow", [
+      ["today", "Today", "One small step, started before you're ready.", "native", "#/today"],
+      ["belief", "Belief Chain", "Facts → focus → belief → feeling → function.", "native", "#/belief"],
+      ["growth", "Growth Rings", "A private wall of the practices that grew you.", "room"],
+      ["legacy", "Time Machine · Legacy", "On This Day, how your work evolved, and what you finished.", "room"],
+      ["academy", "WOW Academy", "ATH learning engines: lessons, worlds and practice.", "link", "https://thewow.online/academy"]]],
+    ["Publish", [
+      ["reader", "Reader", "Read your manuscript the way a reader will.", "room"],
+      ["audiobook", "Audiobook Studio", "Record and keep narrations, chapter by chapter.", "room"],
+      ["publishing", "Publishing", "EPUB, Word and Markdown from your book.", "room"]]],
+    ["Together", [
+      ["companion", "Companion · Spaidbot", "30 personas and 30 skills, through Spaidbot. It suggests; you write.", "room"],
+      ["collaboration", "Collaboration", "Invite a reader, editor or co-writer — only when you choose.", "room"],
+      ["lounge", "Lounge", "The one WOW Lounge, from the WOW dock.", "dock", "lounge"],
+      ["radio", "Radio · Music · TV", "Keep the music playing while you write.", "dock", "radio"],
+      ["shop", "Shop", "The WOW Marketplace.", "link", "https://thewow.online/marketplace"]]],
+    ["You", [
+      ["settings", "Passport & Settings", "Display name, Dawn Paper or Midnight Garden, reduce motion, wisdom mode.", "room"]]]
+  ];
+  function roomById(id) { var f = null; ROOMS.forEach(function (g) { g[1].forEach(function (r) { if (r[0] === id) f = r; }); }); return f; }
+  function viewRooms() {
+    var groups = ROOMS.map(function (g) {
+      return '<section class="os-group"><h2 class="os-h">' + g[0] + '</h2><div class="os-grid">' + g[1].map(function (r, i) {
+        var href = r[3] === "room" ? "#/r/" + r[0] : r[3] === "native" ? r[4] : r[3] === "link" ? r[4] : "#/rooms";
+        var attrs = r[3] === "dock" ? ' data-wow-dock="' + r[4] + '" role="button"' : r[3] === "link" ? ' target="_blank" rel="noopener"' : "";
+        return '<a class="os-card" style="--i:' + i + '" href="' + href + '"' + attrs + '><b>' + r[1] + "</b><span>" + r[2] + '</span><i class="os-kind">' + ({ room: "room", native: "room", dock: "WOW dock", link: "opens WOW" })[r[3]] + "</i></a>";
+      }).join("") + "</div></section>";
+    }).join("");
+    return shell('<section class="hero" style="min-height:300px"><div class="plate" style="background-image:url(art-book-studio.jpg)"></div><div><div class="kicker">Dream Board OS</div><h1>Every room. One board.</h1><p>Everything from the original Dream Board — vaults, studios, graph, research, publishing, Passport — now lives here, on your one WOW Passport.</p></div></section>' +
+      '<div class="wrap os">' + groups + '<p class="note" style="margin:20px 0 0">Lounge, Radio, Music and TV are the one WOW dock (the button at the bottom left), so there is never a second Lounge. Drive import arrives through Book Studio and the Knowledge Vault importers.</p></div>', "rooms");
+  }
+  var roomsLoading = {};
+  async function mountRoom(id) {
+    var meta = roomById(id);
+    if (!meta || meta[3] !== "room") { location.hash = "#/rooms"; return; }
+    $app.innerHTML = shell('<p class="loading">Opening ' + esc(meta[1]) + "…</p>", "rooms");
+    try {
+      if (!window.DBKit) await Promise.all([loadOnce("link", { rel: "stylesheet", href: "book.css?v=" + BOOK_V }), loadOnce("link", { rel: "stylesheet", href: "rooms/rooms.css?v=" + BOOK_V }), loadOnce("script", { src: "rooms/kit.js?v=" + BOOK_V })]);
+      if (!window.DBRoom.get(id)) { if (!roomsLoading[id]) roomsLoading[id] = loadOnce("script", { src: "rooms/" + id + ".js?v=" + BOOK_V }); await roomsLoading[id]; }
+    } catch (e) { roomsLoading[id] = null; $app.innerHTML = shell('<div class="wrap"><p class="err" style="margin-top:40px">' + esc(e.message) + '</p><a class="btn" href="#/rooms">All rooms</a></div>', "rooms"); return; }
+    window.DBRoom.setCtx({ sb: sb, user: function () { return state.user; }, access: function () { return state.access; }, shell: shell, esc: esc, toast: toast, state: state });
+    $app.innerHTML = shell('<div class="room" id="room-' + id + '"></div>', "rooms");
+    var el = document.getElementById("room-" + id);
+    try { await window.DBRoom.get(id).mount(el, window.DBRoom); }
+    catch (e) { el.innerHTML = '<div class="wrap"><p class="err" style="margin-top:40px">' + esc(meta[1]) + " could not open: " + esc(e.message || e) + "</p></div>"; }
+  }
+
   // ---------- Today's calls (Founder order 2026-11-12): King + Queen only ----------
   // Read-only counts + next leads from the ATHOS Call Desk. The office checks the signed Passport token, the server
   // Founder grant and a 6-digit authenticator step-up (aal2) on every read; nothing is cached or stored here.

@@ -1,0 +1,135 @@
+/* Dawn Paper theme (Settings room, 2026-11-12). Scoped to :root[data-theme="dawn"].
+ * Light cream paper, deep emerald ink, burnished gold. The token names keep their roles from styles.css:
+ * --ink/--night = page ground, --cream = body text, --gold/--gold-hi = accents and headings, --glass = panels.
+ * Hard-coded dark surfaces in styles.css / book.css / rooms are re-pointed below so every view stays readable.
+ * Photo scenes keep their art; their scrims turn to warm paper so dark headings read on them. */
+:root[data-theme="dawn"] {
+  --ink: #f7f1e3;
+  --night: #efe6d1;
+  --emerald: #dfe8dc;
+  --emerald-2: #cfdccd;
+  --gold: #8a6418;
+  --gold-hi: #6e4c0c;
+  --gold-dim: rgba(138, 100, 24, 0.40);
+  --gold-line: rgba(138, 100, 24, 0.50);
+  --cream: #1d2a22;
+  --cream-dim: #3f4a40;
+  --muted: #5f6256;
+  --glass: rgba(255, 252, 244, 0.86);
+  --glass-2: rgba(252, 247, 235, 0.92);
+  --danger: #a3402a;
+  --ok: #276b3d;
+  color-scheme: light;
+}
+:root[data-theme="dawn"], :root[data-theme="dawn"] body { background: var(--ink); color: var(--cream); }
+:root[data-theme="dawn"] body {
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgba(214,170,80,0.16), transparent 60%),
+    radial-gradient(80% 60% at 100% 100%, rgba(31,91,67,0.10), transparent 70%),
+    linear-gradient(180deg, #fbf7ec, #f3ecdb 70%);
+  background-attachment: fixed;
+}
+:root[data-theme="dawn"] .dust i { background: radial-gradient(circle, rgba(196,140,40,0.75), rgba(196,140,40,0) 70%); }
+
+/* Chrome */
+:root[data-theme="dawn"] .topbar { background: linear-gradient(180deg, rgba(251,247,236,0.95), rgba(251,247,236,0.82)); border-bottom-color: rgba(138,100,24,0.22); }
+:root[data-theme="dawn"] .nav a[aria-current="page"] { background: rgba(138,100,24,0.10); }
+:root[data-theme="dawn"] .tabbar { background: rgba(251,247,236,0.96) !important; border-top-color: rgba(138,100,24,0.25) !important; }
+:root[data-theme="dawn"] .tabbar a[aria-current="page"] { background: rgba(138,100,24,0.10); }
+:root[data-theme="dawn"] .toast { background: rgba(255,252,244,0.97); color: var(--cream); box-shadow: 0 10px 30px rgba(60,40,10,0.18); }
+:root[data-theme="dawn"] footer.foot { border-top-color: rgba(138,100,24,0.2); }
+
+/* Hero plates: warm paper scrim instead of night */
+:root[data-theme="dawn"] .plate::after { background: linear-gradient(180deg, rgba(247,241,227,0.10) 0%, rgba(247,241,227,0.55) 55%, var(--ink) 100%); }
+:root[data-theme="dawn"] .hero h1, :root[data-theme="dawn"] .bk-scene h1 { text-shadow: 0 1px 0 rgba(255,250,235,0.7), 0 0 24px rgba(255,248,230,0.9); }
+:root[data-theme="dawn"] .hero p { color: var(--cream); }
+:root[data-theme="dawn"] .tree-stage .plate::after { background: linear-gradient(90deg, rgba(247,241,227,0.88), rgba(247,241,227,0.25) 45%, rgba(247,241,227,0.25) 55%, rgba(247,241,227,0.88)); }
+:root[data-theme="dawn"] .ply .plate::after { background: linear-gradient(180deg, rgba(247,241,227,0.45), rgba(247,241,227,0.25) 50%, rgba(247,241,227,0.9)); }
+:root[data-theme="dawn"] .orchard .plate::after { background: linear-gradient(180deg, rgba(247,241,227,0.7), rgba(247,241,227,0.1) 40%, rgba(247,241,227,0.6)); }
+
+/* Glass, cards, fields */
+:root[data-theme="dawn"] .glass { box-shadow: 0 0 0 1px rgba(255,255,255,0.6) inset, 0 16px 40px rgba(70,50,15,0.12); }
+:root[data-theme="dawn"] .card { background: rgba(255,255,255,0.6); border-color: rgba(138,100,24,0.25); }
+:root[data-theme="dawn"] .add input, :root[data-theme="dawn"] .field input, :root[data-theme="dawn"] .field textarea, :root[data-theme="dawn"] .field select,
+:root[data-theme="dawn"] textarea.free, :root[data-theme="dawn"] input.free, :root[data-theme="dawn"] select.free,
+:root[data-theme="dawn"] .bk-filter input[type=search], :root[data-theme="dawn"] .bk-filter select, :root[data-theme="dawn"] .bk-in, :root[data-theme="dawn"] .bk-ta,
+:root[data-theme="dawn"] .bk-card .tools select { background: #fffdf7; border-color: rgba(138,100,24,0.35); color: var(--cream); }
+:root[data-theme="dawn"] ::placeholder { color: #8a8573 !important; }
+:root[data-theme="dawn"] .empty { border-color: rgba(138,100,24,0.3); }
+:root[data-theme="dawn"] .btn { background: rgba(138,100,24,0.07); }
+:root[data-theme="dawn"] .btn:hover { background: rgba(138,100,24,0.14); box-shadow: 0 0 14px rgba(138,100,24,0.18); }
+:root[data-theme="dawn"] .btn.solid { background: linear-gradient(180deg, #8f6a1f, #6e4c0c); color: #fffaf0; border-color: #8a6418; box-shadow: 0 6px 18px rgba(138,100,24,0.28); }
+:root[data-theme="dawn"] .check[aria-pressed="true"] { background: linear-gradient(180deg, #8f6a1f, #6e4c0c); color: #fffaf0; }
+:root[data-theme="dawn"] .lane.glass { background: linear-gradient(90deg, rgba(255,252,244,0.92), rgba(255,252,244,0.6) 40%, rgba(255,252,244,0.6) 60%, rgba(255,252,244,0.85)); }
+:root[data-theme="dawn"] .step { background: rgba(255,252,244,0.9); }
+:root[data-theme="dawn"] .step[aria-pressed="true"] { background: linear-gradient(180deg, #8f6a1f, #6e4c0c); color: #fffaf0; }
+:root[data-theme="dawn"] .tag, :root[data-theme="dawn"] .orchard-top .note { background: rgba(255,252,244,0.92); }
+:root[data-theme="dawn"] .ring { background: linear-gradient(#fffaf0, #fffaf0) padding-box, linear-gradient(145deg, #e9c66f, #8a6418 45%, #d4a94a 70%, #6e4c0c) border-box; box-shadow: 0 0 10px rgba(138,100,24,0.25); }
+:root[data-theme="dawn"] .sunrise-card textarea { background: rgba(255,252,244,0.85); color: var(--cream); }
+:root[data-theme="dawn"] .toggle button[aria-pressed="true"] { background: rgba(138,100,24,0.16); }
+:root[data-theme="dawn"] .os-card { background: linear-gradient(160deg, rgba(255,253,246,0.96), rgba(244,236,218,0.94)); border-color: rgba(138,100,24,0.25); box-shadow: 0 10px 26px rgba(70,50,15,0.10), inset 0 1px 0 #fff; }
+:root[data-theme="dawn"] .os-card:hover, :root[data-theme="dawn"] .os-card:focus-visible { box-shadow: 0 16px 34px rgba(70,50,15,0.16); }
+
+/* Book Studio + rooms */
+:root[data-theme="dawn"] .bk-scene { border-bottom-color: rgba(138,100,24,0.2); }
+:root[data-theme="dawn"] .bk-scene::before { background:
+  linear-gradient(90deg, rgba(250,245,232,0.95) 0%, rgba(250,245,232,0.80) 40%, rgba(250,245,232,0.30) 72%, rgba(250,245,232,0.45) 100%),
+  linear-gradient(180deg, rgba(247,241,227,0) 45%, var(--ink) 100%); }
+:root[data-theme="dawn"] .bk-scene::after { mix-blend-mode: soft-light; opacity: .35; }
+:root[data-theme="dawn"] .bk-scene p.lede { opacity: 1; }
+:root[data-theme="dawn"] .bk-grain { opacity: .05; }
+:root[data-theme="dawn"] .bk-tabs { background: rgba(251,247,236,0.92); border-bottom-color: rgba(138,100,24,0.18); }
+:root[data-theme="dawn"] .bk-tabs a[aria-current=page], :root[data-theme="dawn"] .bk-chip[aria-pressed=true], :root[data-theme="dawn"] .room .rm-tabs button[aria-pressed=true] { background: linear-gradient(180deg, #8f6a1f, #6e4c0c); color: #fffaf0; box-shadow: none; }
+:root[data-theme="dawn"] .bk-panel { background: linear-gradient(180deg, rgba(255,253,247,0.95), rgba(250,244,230,0.95)); border-color: rgba(138,100,24,0.22); box-shadow: 0 14px 36px rgba(70,50,15,0.10), inset 0 1px 0 #fff; }
+:root[data-theme="dawn"] .bk-ocard { background: linear-gradient(180deg, rgba(255,253,247,0.96), rgba(248,241,225,0.96)); }
+:root[data-theme="dawn"] .bk-ocard input { border-bottom-color: rgba(138,100,24,0.35); }
+:root[data-theme="dawn"] .bk-card { background: #fffdf7; border-color: rgba(138,100,24,0.22); }
+:root[data-theme="dawn"] .bk-card mark { background: rgba(214,170,80,0.35); }
+:root[data-theme="dawn"] .bk-card .tag.ai, :root[data-theme="dawn"] .room .rm-ai .rm-meta::before { color: #2d5f86; }
+:root[data-theme="dawn"] .bk-card .tag.ai { border-color: rgba(45,95,134,0.45); }
+:root[data-theme="dawn"] .room .rm-ai { border-left-color: #2d5f86; }
+:root[data-theme="dawn"] .bk-chip, :root[data-theme="dawn"] .bk-noteitem, :root[data-theme="dawn"] .room .rm-item { background: rgba(255,253,247,0.85); border-color: rgba(138,100,24,0.22); }
+:root[data-theme="dawn"] .bk-ch:hover { background: rgba(138,100,24,0.07); }
+:root[data-theme="dawn"] .bk-ch[aria-current=true] { background: rgba(138,100,24,0.12); }
+:root[data-theme="dawn"] .bk-assist .label { color: #fffaf0; }
+:root[data-theme="dawn"] .bk-terms span { background: rgba(138,100,24,0.10); }
+:root[data-theme="dawn"] .bk-book { background: linear-gradient(135deg, #fffaf0, #efe4c9 60%); box-shadow: 0 14px 30px rgba(70,50,15,0.16), inset 8px 0 0 rgba(138,100,24,0.25); }
+:root[data-theme="dawn"] .bk-modal { background: rgba(60,45,20,0.35); }
+@media (max-width: 820px) {
+  :root[data-theme="dawn"] .bk-scene::before { background: linear-gradient(180deg, rgba(250,245,232,0.55) 0%, rgba(250,245,232,0.85) 45%, var(--ink) 100%); }
+  :root[data-theme="dawn"] .bk-rail .bk-ch { background: rgba(255,253,247,0.85); }
+}
+
+/* Room-specific dark bits (room CSS is injected by each room; these keep them legible on paper) */
+:root[data-theme="dawn"] .cp-chips button, :root[data-theme="dawn"] .cp-seg { background: rgba(255,253,247,0.85); }
+:root[data-theme="dawn"] .cp-chips button[aria-pressed=true], :root[data-theme="dawn"] .cp-chips button[aria-checked=true] { background: linear-gradient(180deg, #8f6a1f, #6e4c0c); color: #fffaf0; }
+:root[data-theme="dawn"] .cp-badge { color: #2d5f86; border-color: rgba(45,95,134,0.5); }
+:root[data-theme="dawn"] .cp-out { border-left-color: #2d5f86; }
+:root[data-theme="dawn"] .cp-seg.speculation b { color: #7d3f83; } :root[data-theme="dawn"] .cp-seg.recommendation b { color: #2d5f86; } :root[data-theme="dawn"] .cp-seg.creative_suggestion b, :root[data-theme="dawn"] .cp-seg.generated_draft b { color: #9a4a33; }
+:root[data-theme="dawn"] .rd-page.tone-night { background: #1d2a22; color: #f4ead3; }
+:root[data-theme="dawn"] .rd-page { box-shadow: 0 16px 40px rgba(70,50,15,0.14); }
+:root[data-theme="dawn"] .ab-honest { background: rgba(45,95,134,0.07); border-left-color: #2d5f86; }
+
+/* Readability pass (2026-11-13): room tiles that other rooms paint on a dark glass rgba(4,8,6,.4x) turned muddy grey on
+ * paper (text fell to 1.5–3:1). Re-point them to paper cards; lift the small gold/blue labels to 4.5:1+ on cream. */
+:root[data-theme="dawn"] .pj-tpl button, :root[data-theme="dawn"] .pj-card, :root[data-theme="dawn"] .pj-li, :root[data-theme="dawn"] .pj-mem, :root[data-theme="dawn"] .pj-obs,
+:root[data-theme="dawn"] .gr-chip, :root[data-theme="dawn"] .gr-entry, :root[data-theme="dawn"] .gr-sum article,
+:root[data-theme="dawn"] .lg-mem, :root[data-theme="dawn"] .lg-proj, :root[data-theme="dawn"] .cb-note,
+:root[data-theme="dawn"] .cn-link, :root[data-theme="dawn"] .cg-edges article, :root[data-theme="dawn"] .kv-cl,
+:root[data-theme="dawn"] .ws-diff, :root[data-theme="dawn"] .ws-doc { background: rgba(255,253,247,0.9); border-color: rgba(138,100,24,0.25); }
+:root[data-theme="dawn"] .os-card .os-kind { color: var(--gold-hi); opacity: 1; }
+:root[data-theme="dawn"] .vg-det { color: #fffaf0; background: #7a5812; }
+:root[data-theme="dawn"] .cb-pill.pending { color: #2d5f86; border-color: rgba(45,95,134,0.5); }
+:root[data-theme="dawn"] .cb-pill.accepted { color: var(--ok); border-color: rgba(39,107,61,0.45); }
+:root[data-theme="dawn"] .bk-ch .n { color: var(--gold-hi); }
+:root[data-theme="dawn"] .cp-seg.evidence b { color: var(--ok); }
+:root[data-theme="dawn"] .ab-src { color: var(--gold-hi); }
+:root[data-theme="dawn"] .ab-rec { border-color: rgba(138,100,24,0.4); }
+:root[data-theme="dawn"] .pb-check li.pass i { background: rgba(39,107,61,0.12); border-color: rgba(39,107,61,0.45); }
+:root[data-theme="dawn"] .pb-check li.fail i { background: rgba(163,64,42,0.10); border-color: rgba(163,64,42,0.45); }
+:root[data-theme="dawn"] .pb-hist th { color: var(--gold-hi); }
+:root[data-theme="dawn"] .pb-hist th, :root[data-theme="dawn"] .pb-hist td { border-bottom-color: rgba(138,100,24,0.2); }
+:root[data-theme="dawn"] .rd-progress { background: rgba(138,100,24,0.16); }
+:root[data-theme="dawn"] .tabbar .g { color: var(--gold-hi); }
+/* Book Studio theme tags carry an inline pastel hue tuned for night; on paper keep the hue on the border, ink on the text. */
+:root[data-theme="dawn"] .bk-card .tag[style] { color: var(--cream) !important; background: rgba(255,253,247,0.9); }

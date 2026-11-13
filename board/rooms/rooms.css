@@ -1,0 +1,15 @@
+/* Shared room styles (loaded with rooms/kit.js). Rooms add their own small CSS via DBKit.css(). */
+.room .bk-scene.room-scene { min-height: 260px; }
+.room .bk-work { padding-top: 18px; }
+.room .rm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.room .rm-item { padding: 14px; border-radius: 14px; border: 1px solid rgba(217,181,108,0.2); background: rgba(4,8,6,0.45); }
+.room .rm-item h4 { margin: 0 0 4px; font-family: var(--serif); font-weight: 500; font-size: 19px; color: var(--cream); }
+.room .rm-meta { font-size: 12px; color: var(--muted); }
+.room .rm-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.room .rm-form { display: grid; gap: 8px; }
+.room label.rm-l { font-size: 12px; color: var(--cream-dim); letter-spacing: .04em; }
+.room .bk-in, .room .bk-ta, .room select.bk-in { width: 100%; }
+.room .rm-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.room .rm-tabs button[aria-pressed=true] { background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: #1b1407; }
+.room .rm-ai { border-left: 3px solid #9fc7e8; }
+.room .rm-ai .rm-meta::before { content: "Suggestion · not your words · "; color: #9fc7e8; }
